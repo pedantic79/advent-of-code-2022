@@ -1,0 +1,29 @@
+[package]
+name = "advent-of-code-2022"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aoc-runner = { git = "https://github.com/pedantic79/cargo-aoc.git", branch = "new-criterion", package = "aoc-runner" }
+aoc-runner-derive = { git = "https://github.com/pedantic79/cargo-aoc.git", branch = "new-criterion", package = "aoc-runner-derive" }
+nom = "7"
+num = "0.4"
+itertools = "0.12"
+rayon = "1"
+pathfinding = "4"
+nohash-hasher = "0.2"
+rustc-hash = "1"
+ahash = "0.8"
+gxhash = "2"
+arrayvec = "0.7"
+stable-pattern = "0.1"
+once_cell = "1"
+scanf = "1"
+bit-set = "0.5"
+lazy_static = "1"
+bitvec = "1"
+smallstr = "0.3.0"
+
+[profile.release]
+lto = "thin"
+panic = "abort"
