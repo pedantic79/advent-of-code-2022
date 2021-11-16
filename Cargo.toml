@@ -1,0 +1,23 @@
+[package]
+name = "advent-of-code-2022"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aoc-runner = "0.3.0"
+aoc-runner-derive = "0.3.0"
+nom = "7"
+num = "0.4"
+itertools = "0.10"
+rayon = "1"
+pathfinding = "3"
+nohash-hasher = "0.2"
+rustc-hash = "1"
+ahash = "0.8"
+arrayvec = "0.7"
+stable-pattern = "0.1"
+once_cell = "1"
+
+[profile.release]
+lto = "thin"
+panic = "abort"
