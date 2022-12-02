@@ -1,7 +1,6 @@
 use std::cmp::Reverse;
 
 use aoc_runner_derive::{aoc, aoc_generator};
-use itertools::Itertools;
 
 #[aoc_generator(day01)]
 pub fn generator(input: &str) -> Vec<usize> {
@@ -18,7 +17,9 @@ pub fn part1(inputs: &[usize]) -> usize {
 
 #[aoc(day01, part2)]
 pub fn part2(inputs: &[usize]) -> usize {
-    inputs.iter().sorted_by_key(|&&x| Reverse(x)).take(3).sum()
+    let mut inputs = inputs.to_vec();
+    inputs.select_nth_unstable_by_key(2, |&x| Reverse(x));
+    inputs.iter().take(3).sum()
 }
 
 #[cfg(test)]
