@@ -1,5 +1,3 @@
-use std::cmp::Reverse;
-
 use aoc_runner_derive::{aoc, aoc_generator};
 
 #[aoc_generator(day01)]
@@ -10,16 +8,24 @@ pub fn generator(input: &str) -> Vec<usize> {
         .collect()
 }
 
-#[aoc(day01, part1)]
+#[aoc(day01, part1, heap)]
 pub fn part1(inputs: &[usize]) -> usize {
-    inputs.iter().max().copied().unwrap()
+    solve::<1>(inputs)
 }
 
-#[aoc(day01, part2)]
+#[aoc(day01, part2, heap)]
 pub fn part2(inputs: &[usize]) -> usize {
-    let mut inputs = inputs.to_vec();
-    inputs.select_nth_unstable_by_key(2, |&x| Reverse(x));
-    inputs.iter().take(3).sum()
+    solve::<3>(inputs)
+}
+
+#[inline]
+fn solve<const N: usize>(inputs: &[usize]) -> usize {
+    inputs
+        .iter()
+        .copied()
+        .fold([0; N], crate::common::heap_retain::accumulate_max_n)
+        .into_iter()
+        .sum()
 }
 
 #[cfg(test)]
