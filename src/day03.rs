@@ -1,13 +1,16 @@
-use ahash::HashSet;
-
 use aoc_runner_derive::{aoc, aoc_generator};
 
-fn priority(b: u8) -> usize {
+fn priority(b: u8) -> u64 {
     match b {
-        b'a'..=b'z' => (b - b'a' + 1) as usize,
-        b'A'..=b'Z' => (b - b'A' + 26 + 1) as usize,
+        b'a'..=b'z' => b - b'a' + 1,
+        b'A'..=b'Z' => b - b'A' + 26 + 1,
         _ => panic!("{b} isn't ascii"),
     }
+    .into()
+}
+
+fn build_set(s: &str) -> u64 {
+    s.bytes().fold(0, |set, c| set | 1 << priority(c))
 }
 
 #[aoc_generator(day3)]
@@ -16,38 +19,40 @@ pub fn generator(input: &str) -> Vec<String> {
 }
 
 #[aoc(day3, part1)]
-pub fn part1(inputs: &[String]) -> usize {
+pub fn part1(inputs: &[String]) -> u64 {
     inputs
         .iter()
         .map(|s| {
-            let l = s.len() / 2;
-            let mut freq: HashSet<u8> = HashSet::default();
-            for s in s.bytes().take(l) {
-                freq.insert(s);
-            }
+            let (a, b) = s.split_at(s.len() / 2);
 
-            for s in s.bytes().skip(l) {
-                if freq.contains(&s) {
-                    return priority(s);
-                }
-            }
-
-            unreachable!()
+            let seen = build_set(a);
+            b.bytes()
+                .find_map(|c| {
+                    let c = priority(c);
+                    if seen & (1 << c) > 0 {
+                        Some(c)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap()
         })
         .sum()
 }
 
 #[aoc(day3, part2)]
-pub fn part2(inputs: &[String]) -> usize {
+pub fn part2(inputs: &[String]) -> u64 {
     inputs
         .chunks(3)
         .map(|group| {
-            let a = group[0].bytes().collect::<HashSet<u8>>();
-            let b = group[1].bytes().collect::<HashSet<u8>>();
-            let c = group[2].bytes().collect::<HashSet<u8>>();
-            let ab = a.intersection(&b).copied().collect::<HashSet<u8>>();
-            let z = ab.intersection(&c).copied().collect::<Vec<u8>>();
-            priority(z[0])
+            u64::from(
+                group
+                    .iter()
+                    .map(|g| build_set(g))
+                    .reduce(|acc, set| acc & set)
+                    .unwrap()
+                    .trailing_zeros(),
+            )
         })
         .sum()
 }
@@ -64,13 +69,6 @@ ttgJtRGJQctTZtZT
 CrZsJsPPZsGzwwsLwLmpwMDw";
 
     #[test]
-    pub fn test_input() {
-        println!("{:?}", generator(SAMPLE));
-
-        // assert_eq!(generator(SAMPLE), Object());
-    }
-
-    #[test]
     pub fn test1() {
         assert_eq!(part1(&generator(SAMPLE)), 157);
     }
@@ -84,7 +82,7 @@ CrZsJsPPZsGzwwsLwLmpwMDw";
         use super::*;
 
         const INPUT: &str = include_str!("../input/2022/day3.txt");
-        const ANSWERS: (usize, usize) = (8153, 2342);
+        const ANSWERS: (u64, u64) = (8153, 2342);
 
         #[test]
         pub fn test() {
