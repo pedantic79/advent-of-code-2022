@@ -10,8 +10,12 @@ pub fn accumulate_max_n<const N: usize, T: Ord>(mut heap: [T; N], x: T) -> [T; N
             // see: https://doc.rust-lang.org/1.65.0/src/alloc/vec/mod.rs.html#1392-1406
             unsafe {
                 let p = heap.as_mut_ptr().add(i);
+
+                // Drop the last element
+                std::ptr::drop_in_place(heap.as_mut_ptr().add(N - 1));
+
+                // Copy one less than the elements on the right, on spot over
                 std::ptr::copy(p, p.add(1), N - 1 - i);
-                std::ptr::drop_in_place(p);
                 std::ptr::write(p, x);
             }
             break;
