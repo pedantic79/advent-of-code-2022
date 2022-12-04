@@ -1,16 +1,18 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 
-fn priority(b: u8) -> u64 {
-    match b {
-        b'a'..=b'z' => b - b'a' + 1,
-        b'A'..=b'Z' => b - b'A' + 26 + 1,
-        _ => panic!("{b} isn't ascii"),
+// Amount to subtract to
+const OFFSET: u8 = 64;
+
+fn calc_priority(set: u64) -> u64 {
+    // convert the set bit in the set back to the character
+    let c = u8::try_from(set.trailing_zeros()).unwrap() + OFFSET;
+
+    if c.is_ascii_lowercase() {
+        c - b'a' + 1
+    } else {
+        c - b'A' + 27
     }
     .into()
-}
-
-fn build_set(s: &str) -> u64 {
-    s.bytes().fold(0, |set, c| set | 1 << priority(c))
 }
 
 #[aoc_generator(day3)]
@@ -19,41 +21,40 @@ pub fn generator(input: &str) -> Vec<String> {
 }
 
 #[aoc(day3, part1)]
-pub fn part1(inputs: &[String]) -> u64 {
-    inputs
+pub fn part1(rucksacks: &[String]) -> u64 {
+    rucksacks
         .iter()
-        .map(|s| {
-            let (a, b) = s.split_at(s.len() / 2);
+        .map(|rucksack| {
+            let (l, r) = rucksack.split_at(rucksack.len() / 2);
+            let (mut left, mut rite) = (0, 0);
 
-            let seen = build_set(a);
-            b.bytes()
-                .find_map(|c| {
-                    let c = priority(c);
-                    if seen & (1 << c) > 0 {
-                        Some(c)
-                    } else {
-                        None
-                    }
-                })
-                .unwrap()
+            // loop until we have a matching bits
+            for (left_byte, rite_byte) in l.bytes().zip(r.bytes()) {
+                left |= 1 << (left_byte - OFFSET);
+                rite |= 1 << (rite_byte - OFFSET);
+                let cross = left & rite;
+                if cross > 0 {
+                    return calc_priority(cross);
+                }
+            }
+
+            panic!("{l} and {r} don't overlap")
         })
         .sum()
 }
 
 #[aoc(day3, part2)]
-pub fn part2(inputs: &[String]) -> u64 {
-    inputs
+pub fn part2(rucksacks: &[String]) -> u64 {
+    rucksacks
         .chunks(3)
         .map(|group| {
-            u64::from(
-                group
-                    .iter()
-                    .map(|g| build_set(g))
-                    .reduce(|acc, set| acc & set)
-                    .unwrap()
-                    .trailing_zeros(),
-            )
+            group
+                .iter()
+                .map(|rucksack| rucksack.bytes().fold(0, |set, c| set | 1 << (c - OFFSET)))
+                .reduce(|acc, set| acc & set)
+                .unwrap()
         })
+        .map(calc_priority)
         .sum()
 }
 
