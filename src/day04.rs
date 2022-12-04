@@ -1,6 +1,6 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 
-use crate::common::utils::parse_split_once;
+use crate::common::utils::parse_split_n;
 
 type Range = (u32, u32);
 
@@ -15,9 +15,8 @@ pub fn generator(input: &str) -> Vec<Assignments> {
     input
         .lines()
         .map(|line| {
-            let (one, two) = line.split_once(',').unwrap();
-            let one = parse_split_once(one, '-').unwrap();
-            let two = parse_split_once(two, '-').unwrap();
+            let [a, b, x, y] = parse_split_n(line, &[',', '-'][..]).unwrap();
+            let (one, two) = ((a, b), (x, y));
             Assignments { one, two }
         })
         .collect()
