@@ -18,6 +18,7 @@ dependencies = [
  "pathfinding",
  "rayon",
  "rustc-hash",
+ "scanf",
  "stable-pattern",
 ]
 
@@ -397,6 +398,15 @@ name = "ryu"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
+
+[[package]]
+name = "scanf"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1af23b806e681b4f838a9887655219b755a418f60353968a88b0b87a35b3e8ce"
+dependencies = [
+ "nom",
+]
 
 [[package]]
 name = "scopeguard"

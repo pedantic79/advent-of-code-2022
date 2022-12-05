@@ -17,6 +17,7 @@ ahash = "0.8"
 arrayvec = "0.7"
 stable-pattern = "0.1"
 once_cell = "1"
+scanf = "1"
 
 [profile.release]
 lto = "thin"
