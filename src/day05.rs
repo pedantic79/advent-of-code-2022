@@ -2,6 +2,8 @@ use std::{convert::Infallible, str::FromStr};
 
 use aoc_runner_derive::{aoc, aoc_generator};
 
+use crate::common::utils::slice_get_mut_two;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Map {
     stacks: Vec<Vec<u8>>,
@@ -16,13 +18,10 @@ impl FromStr for Map {
         let mut stacks = vec![Vec::new(); width];
 
         for line in s.lines().rev().skip(1) {
-            if line.is_empty() {
-                continue;
-            }
-            let line = &line.as_bytes()[1..];
+            let line = &line.as_bytes();
             for (index, s) in line.chunks(4).enumerate() {
-                if s[0] != b' ' {
-                    stacks[index].push(s[0])
+                if s[1] != b' ' {
+                    stacks[index].push(s[1])
                 }
             }
         }
@@ -42,15 +41,18 @@ impl FromStr for Move {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut count = 0;
-        let mut from_stack = 0;
-        let mut to_stack = 0;
+        let mut field = s.split(' ');
+        field.next();
+        let count = field.next().unwrap().parse().unwrap();
+        field.next();
+        let from_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
+        field.next();
+        let to_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
 
-        scanf::sscanf!(s, "move {} from {} to {}", count, from_stack, to_stack).unwrap();
         Ok(Self {
             count,
-            from_stack: from_stack - 1,
-            to_stack: to_stack - 1,
+            from_stack,
+            to_stack,
         })
     }
 }
@@ -61,41 +63,40 @@ pub struct Input {
     moves: Vec<Move>,
 }
 
-fn process_moves2(moves: &[Move], map: &mut Map) {
-    let mut temp = Vec::new();
-    for &m in moves {
-        let count = m.count;
-        let start = map.stacks[m.from_stack].len() - count;
-        temp.extend(map.stacks[m.from_stack].drain(start..));
-        map.stacks[m.to_stack].append(&mut temp);
-    }
-}
-
 impl Input {
-    fn process_moves(&mut self) {
+    fn process_moves1(&mut self) {
         for &m in &self.moves {
-            let count = m.count;
-            for _ in 0..count {
-                if let Some(temp) = self.map.stacks[m.from_stack].pop() {
-                    self.map.stacks[m.to_stack].push(temp);
-                }
-            }
+            let start = self.map.stacks[m.from_stack].len() - m.count;
+            let (f, t) = slice_get_mut_two(&mut self.map.stacks, m.from_stack, m.to_stack);
+            t.extend(f.drain(start..).rev());
         }
     }
 
-    fn get_anser(&self) -> String {
-        let mut ans = String::new();
-        for s in &self.map.stacks {
-            ans.push(*s.last().unwrap_or(&b' ') as char);
+    fn process_moves2(&mut self) {
+        for &m in &self.moves {
+            let start = self.map.stacks[m.from_stack].len() - m.count;
+            let (f, t) = slice_get_mut_two(&mut self.map.stacks, m.from_stack, m.to_stack);
+            t.extend(f.drain(start..));
         }
-        ans
+    }
+
+    fn get_answer(&self) -> String {
+        let v = self
+            .map
+            .stacks
+            .iter()
+            .map(|s| *s.last().unwrap_or(&b' '))
+            .collect();
+
+        // SAFETY: We're only dealing with ascii
+        unsafe { String::from_utf8_unchecked(v) }
     }
 }
 
 #[aoc_generator(day5)]
 pub fn generator(input: &str) -> Input {
     let (map, moves) = input.split_once("\n\n").unwrap();
-    let map = map.parse().unwrap();
+    let map = map.trim_end().parse().unwrap();
     let moves = moves.lines().map(|line| line.parse().unwrap()).collect();
 
     Input { map, moves }
@@ -104,15 +105,15 @@ pub fn generator(input: &str) -> Input {
 #[aoc(day5, part1)]
 pub fn part1(inputs: &Input) -> String {
     let mut inputs = inputs.clone();
-    inputs.process_moves();
-    inputs.get_anser()
+    inputs.process_moves1();
+    inputs.get_answer()
 }
 
 #[aoc(day5, part2)]
 pub fn part2(inputs: &Input) -> String {
     let mut inputs = inputs.clone();
-    process_moves2(&inputs.moves, &mut inputs.map);
-    inputs.get_anser()
+    inputs.process_moves2();
+    inputs.get_answer()
 }
 
 #[cfg(test)]
@@ -159,7 +160,7 @@ move 1 from 1 to 2";
             let output = generator(input);
 
             assert_eq!(part1(&output), ANSWERS.0);
-            // assert_eq!(part2(&output), ANSWERS.1);
+            assert_eq!(part2(&output), ANSWERS.1);
         }
     }
 }
