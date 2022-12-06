@@ -1,5 +1,6 @@
 use crate::common::GetMutTwice;
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{bytes::complete::tag, character::complete, combinator, sequence};
 use std::{convert::Infallible, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -35,22 +36,29 @@ pub struct Move {
     to_stack: usize,
 }
 
+fn number<T: FromStr>(s: &str) -> nom::IResult<&str, T> {
+    combinator::map_res(complete::digit1, FromStr::from_str)(s)
+}
+
 impl FromStr for Move {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut field = s.split(' ');
-        field.next().unwrap();
-        let count = field.next().unwrap().parse().unwrap();
-        field.next().unwrap();
-        let from_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
-        field.next().unwrap();
-        let to_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
+        let (_, count, _, from_stack, _, to_stack) = sequence::tuple((
+            tag("move "),
+            number::<usize>,
+            tag(" from "),
+            number::<usize>,
+            tag(" to "),
+            number::<usize>,
+        ))(s)
+        .unwrap()
+        .1;
 
         Ok(Self {
             count,
-            from_stack,
-            to_stack,
+            from_stack: from_stack - 1,
+            to_stack: to_stack - 1,
         })
     }
 }
