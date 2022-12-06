@@ -31,3 +31,25 @@ impl AddIsize for usize {
         }
     }
 }
+
+pub trait GetMutTwice {
+    type Output;
+
+    fn get_mut_twice(
+        &mut self,
+        index0: usize,
+        index1: usize,
+    ) -> (&mut Self::Output, &mut Self::Output);
+}
+
+impl<T> GetMutTwice for [T] {
+    type Output = T;
+
+    fn get_mut_twice(
+        &mut self,
+        index0: usize,
+        index1: usize,
+    ) -> (&mut Self::Output, &mut Self::Output) {
+        crate::common::utils::slice_get_mut_twice(self, index0, index1)
+    }
+}

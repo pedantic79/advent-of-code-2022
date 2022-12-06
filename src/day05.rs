@@ -1,27 +1,25 @@
+use crate::common::GetMutTwice;
+use aoc_runner_derive::{aoc, aoc_generator};
 use std::{convert::Infallible, str::FromStr};
 
-use aoc_runner_derive::{aoc, aoc_generator};
-
-use crate::common::utils::slice_get_mut_two;
-
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Map {
+pub struct Crates {
     stacks: Vec<Vec<u8>>,
 }
 
-impl FromStr for Map {
+impl FromStr for Crates {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let width = (s.lines().rev().next().unwrap().len() + 2) / 4;
+        let mut lines = s.lines().rev();
+        let width = (lines.next().unwrap().len() + 2) / 4;
+        let mut stacks = vec![Vec::with_capacity(64); width];
 
-        let mut stacks = vec![Vec::new(); width];
-
-        for line in s.lines().rev().skip(1) {
-            let line = &line.as_bytes();
-            for (index, s) in line.chunks(4).enumerate() {
-                if s[1] != b' ' {
-                    stacks[index].push(s[1])
+        for line in lines {
+            let line = line.as_bytes();
+            for (name, stack) in line.chunks(4).zip(stacks.iter_mut()) {
+                if name[1] != b' ' {
+                    stack.push(name[1])
                 }
             }
         }
@@ -42,11 +40,11 @@ impl FromStr for Move {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut field = s.split(' ');
-        field.next();
+        field.next().unwrap();
         let count = field.next().unwrap().parse().unwrap();
-        field.next();
+        field.next().unwrap();
         let from_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
-        field.next();
+        field.next().unwrap();
         let to_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
 
         Ok(Self {
@@ -59,30 +57,30 @@ impl FromStr for Move {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Input {
-    map: Map,
+    crates: Crates,
     moves: Vec<Move>,
 }
 
 impl Input {
     fn process_moves1(&mut self) {
         for &m in &self.moves {
-            let start = self.map.stacks[m.from_stack].len() - m.count;
-            let (f, t) = slice_get_mut_two(&mut self.map.stacks, m.from_stack, m.to_stack);
+            let start = self.crates.stacks[m.from_stack].len() - m.count;
+            let (f, t) = self.crates.stacks.get_mut_twice(m.from_stack, m.to_stack);
             t.extend(f.drain(start..).rev());
         }
     }
 
     fn process_moves2(&mut self) {
         for &m in &self.moves {
-            let start = self.map.stacks[m.from_stack].len() - m.count;
-            let (f, t) = slice_get_mut_two(&mut self.map.stacks, m.from_stack, m.to_stack);
+            let start = self.crates.stacks[m.from_stack].len() - m.count;
+            let (f, t) = self.crates.stacks.get_mut_twice(m.from_stack, m.to_stack);
             t.extend(f.drain(start..));
         }
     }
 
-    fn get_answer(&self) -> String {
+    fn read_tops(&self) -> String {
         let v = self
-            .map
+            .crates
             .stacks
             .iter()
             .map(|s| *s.last().unwrap_or(&b' '))
@@ -95,25 +93,25 @@ impl Input {
 
 #[aoc_generator(day5)]
 pub fn generator(input: &str) -> Input {
-    let (map, moves) = input.split_once("\n\n").unwrap();
-    let map = map.trim_end().parse().unwrap();
+    let (crates, moves) = input.split_once("\n\n").unwrap();
+    let crates = crates.trim_end().parse().unwrap();
     let moves = moves.lines().map(|line| line.parse().unwrap()).collect();
 
-    Input { map, moves }
+    Input { crates, moves }
 }
 
 #[aoc(day5, part1)]
 pub fn part1(inputs: &Input) -> String {
     let mut inputs = inputs.clone();
     inputs.process_moves1();
-    inputs.get_answer()
+    inputs.read_tops()
 }
 
 #[aoc(day5, part2)]
 pub fn part2(inputs: &Input) -> String {
     let mut inputs = inputs.clone();
     inputs.process_moves2();
-    inputs.get_answer()
+    inputs.read_tops()
 }
 
 #[cfg(test)]

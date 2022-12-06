@@ -171,7 +171,7 @@ pub fn neighbors_diag(
     })
 }
 
-pub fn slice_get_mut_two<T>(slice: &mut [T], index0: usize, index1: usize) -> (&mut T, &mut T) {
+pub fn slice_get_mut_twice<T>(slice: &mut [T], index0: usize, index1: usize) -> (&mut T, &mut T) {
     assert_ne!(index0, index1);
     assert!(index0 < slice.len());
     assert!(index1 < slice.len());
