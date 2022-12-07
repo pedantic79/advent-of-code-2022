@@ -1,10 +1,20 @@
-use ahash::HashMap;
 use aoc_runner_derive::{aoc, aoc_generator};
-use std::path::{Path, PathBuf};
+use nohash_hasher::IntMap;
+use std::hash::Hasher;
+use std::{
+    hash::Hash,
+    path::{Path, PathBuf},
+};
+
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = rustc_hash::FxHasher::default();
+    t.hash(&mut s);
+    s.finish()
+}
 
 #[aoc_generator(day7)]
-pub fn generator(inputs: &str) -> HashMap<PathBuf, usize> {
-    let mut dirs = HashMap::default();
+pub fn generator(inputs: &str) -> IntMap<u64, usize> {
+    let mut dirs = IntMap::default();
     let mut path = PathBuf::new();
     let mut iter = inputs.lines().peekable();
 
@@ -32,10 +42,10 @@ pub fn generator(inputs: &str) -> HashMap<PathBuf, usize> {
 
             let mut d = path.clone();
             while d != Path::new("/") {
-                *dirs.entry(d.clone()).or_default() += total;
+                *dirs.entry(calculate_hash(&d)).or_default() += total;
                 d.pop();
             }
-            *dirs.entry("/".into()).or_default() += total;
+            *dirs.entry(calculate_hash(&Path::new("/"))).or_default() += total;
         }
     }
 
@@ -43,13 +53,13 @@ pub fn generator(inputs: &str) -> HashMap<PathBuf, usize> {
 }
 
 #[aoc(day7, part1)]
-pub fn part1(dirs: &HashMap<PathBuf, usize>) -> usize {
+pub fn part1(dirs: &IntMap<u64, usize>) -> usize {
     dirs.values().filter(|&&v| v < 100000).sum()
 }
 
 #[aoc(day7, part2)]
-pub fn part2(dirs: &HashMap<PathBuf, usize>) -> usize {
-    let need = 30000000 - (70000000 - *dirs.get(&PathBuf::from("/")).unwrap());
+pub fn part2(dirs: &IntMap<u64, usize>) -> usize {
+    let need = 30000000 - (70000000 - *dirs.get(&calculate_hash(&Path::new("/"))).unwrap());
     *dirs.values().filter(|&&v| v > need).min().unwrap()
 }
 
@@ -96,6 +106,14 @@ $ ls
     #[test]
     pub fn test2() {
         assert_eq!(part2(&generator(SAMPLE)), 24933642);
+    }
+
+    #[test]
+    fn hashing() {
+        assert_eq!(
+            calculate_hash(&["/"].iter().collect::<PathBuf>()),
+            calculate_hash(&Path::new("/"))
+        )
     }
 
     mod regression {
