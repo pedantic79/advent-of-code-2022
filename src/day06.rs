@@ -1,25 +1,28 @@
 use aoc_runner_derive::aoc;
 
-fn unique(s: &[u8]) -> bool {
-    for i in 0..s.len() {
-        for j in (i + 1)..s.len() {
+fn unique(s: &[u8]) -> Result<(), usize> {
+    for i in (1..s.len()).rev() {
+        for j in (0..i).rev() {
             if s[i] == s[j] {
-                return false;
+                return Err(j + 1);
             }
         }
     }
-
-    true
+    Ok(())
 }
 
 fn solve<const N: usize>(input: &str) -> usize {
-    input
-        .as_bytes()
-        .windows(N)
-        .enumerate()
-        .find_map(|(i, w)| if unique(w) { Some(i) } else { None })
-        .unwrap()
-        + N
+    let input = input.as_bytes();
+    let mut pos = 0;
+
+    loop {
+        assert!(pos + N < input.len());
+        if let Err(x) = unique(&input[pos..(pos + N)]) {
+            pos += x;
+        } else {
+            break pos + N;
+        }
+    }
 }
 
 #[aoc(day6, part1)]
