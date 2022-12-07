@@ -13,10 +13,11 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 }
 
 #[aoc_generator(day7)]
-pub fn generator(inputs: &str) -> IntMap<u64, usize> {
-    let mut dirs = IntMap::default();
+pub fn generator(inputs: &str) -> Vec<usize> {
+    let mut dirs: IntMap<u64, usize> = IntMap::default();
     let mut path = PathBuf::new();
     let mut iter = inputs.lines().peekable();
+    let mut root = 0;
 
     while let Some(line) = iter.next() {
         if line.starts_with("$ cd") {
@@ -45,22 +46,25 @@ pub fn generator(inputs: &str) -> IntMap<u64, usize> {
                 *dirs.entry(calculate_hash(&d)).or_default() += total;
                 d.pop();
             }
-            *dirs.entry(calculate_hash(&Path::new("/"))).or_default() += total;
+            root += total;
         }
     }
 
-    dirs
+    let mut res = Vec::with_capacity(dirs.len() + 1);
+    res.push(root);
+    res.extend(dirs.into_values());
+    res
 }
 
 #[aoc(day7, part1)]
-pub fn part1(dirs: &IntMap<u64, usize>) -> usize {
-    dirs.values().filter(|&&v| v < 100000).sum()
+pub fn part1(dirs: &[usize]) -> usize {
+    dirs.iter().filter(|&&v| v < 100000).sum()
 }
 
 #[aoc(day7, part2)]
-pub fn part2(dirs: &IntMap<u64, usize>) -> usize {
-    let need = 30000000 - (70000000 - *dirs.get(&calculate_hash(&Path::new("/"))).unwrap());
-    *dirs.values().filter(|&&v| v > need).min().unwrap()
+pub fn part2(dirs: &[usize]) -> usize {
+    let need = 30000000 - (70000000 - dirs[0]);
+    *dirs.iter().filter(|&&v| v > need).min().unwrap()
 }
 
 #[cfg(test)]
