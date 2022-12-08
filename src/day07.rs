@@ -1,12 +1,8 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use nohash_hasher::IntMap;
-use std::hash::Hasher;
-use std::{
-    hash::Hash,
-    path::{Path, PathBuf},
-};
+use std::hash::{Hash, Hasher};
 
-fn calculate_hash<T: Hash>(t: &T) -> u64 {
+fn calculate_hash<T: Hash + ?Sized>(t: &T) -> u64 {
     let mut s = rustc_hash::FxHasher::default();
     t.hash(&mut s);
     s.finish()
@@ -14,8 +10,8 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 
 #[aoc_generator(day7)]
 pub fn generator(inputs: &str) -> Vec<usize> {
-    let mut dirs: IntMap<u64, usize> = IntMap::default();
-    let mut path = PathBuf::new();
+    let mut dirs = IntMap::<_, usize>::default();
+    let mut path = Vec::with_capacity(128);
     let mut iter = inputs.lines().peekable();
     let mut root = 0;
 
@@ -41,10 +37,8 @@ pub fn generator(inputs: &str) -> Vec<usize> {
                 }
             }
 
-            let mut d = path.clone();
-            while d != Path::new("/") {
-                *dirs.entry(calculate_hash(&d)).or_default() += total;
-                d.pop();
+            for end in (2..=path.len()).rev() {
+                *dirs.entry(calculate_hash(&path[..end])).or_default() += total;
             }
             root += total;
         }
@@ -110,14 +104,6 @@ $ ls
     #[test]
     pub fn test2() {
         assert_eq!(part2(&generator(SAMPLE)), 24933642);
-    }
-
-    #[test]
-    fn hashing() {
-        assert_eq!(
-            calculate_hash(&["/"].iter().collect::<PathBuf>()),
-            calculate_hash(&Path::new("/"))
-        )
     }
 
     mod regression {
