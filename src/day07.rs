@@ -1,32 +1,22 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use nohash_hasher::IntMap;
-use std::hash::{Hash, Hasher};
+use std::iter::Peekable;
 
-fn calculate_hash<T: Hash + ?Sized>(t: &T) -> u64 {
-    let mut s = rustc_hash::FxHasher::default();
-    t.hash(&mut s);
-    s.finish()
-}
+fn process<'a, I: Iterator<Item = &'a str>>(
+    lines: &mut Peekable<I>,
+    sizes: &mut Vec<usize>,
+) -> usize {
+    let mut total = 0;
 
-#[aoc_generator(day7)]
-pub fn generator(inputs: &str) -> Vec<usize> {
-    let mut dirs = IntMap::<_, usize>::default();
-    let mut path = Vec::with_capacity(128);
-    let mut iter = inputs.lines().peekable();
-    let mut root = 0;
-
-    while let Some(line) = iter.next() {
+    while let Some(line) = lines.next() {
         if line.starts_with("$ cd") {
-            let dir = line.rsplit_once(' ').unwrap().1;
-            if dir != ".." {
-                path.push(dir);
-            } else {
-                path.pop();
+            match line.rsplit_once(' ').unwrap().1 {
+                ".." => break,
+                "/" => continue,
+                _ => total += process(lines, sizes),
             }
         } else if line == "$ ls" {
-            let mut total: usize = 0;
-            while let Some(false) = iter.peek().map(|l| l.starts_with('$')) {
-                let ls_output = iter.next().unwrap();
+            while let Some(false) = lines.peek().map(|l| l.starts_with('$')) {
+                let ls_output = lines.next().unwrap();
                 if !ls_output.starts_with("dir") {
                     total += ls_output
                         .split_once(' ')
@@ -36,17 +26,17 @@ pub fn generator(inputs: &str) -> Vec<usize> {
                         .unwrap();
                 }
             }
-
-            for end in (2..=path.len()).rev() {
-                *dirs.entry(calculate_hash(&path[..end])).or_default() += total;
-            }
-            root += total;
         }
     }
 
-    let mut res = Vec::with_capacity(dirs.len() + 1);
-    res.push(root);
-    res.extend(dirs.into_values());
+    sizes.push(total);
+    total
+}
+
+#[aoc_generator(day7)]
+pub fn generator(inputs: &str) -> Vec<usize> {
+    let mut res = Vec::new();
+    process(&mut inputs.lines().peekable(), &mut res);
     res
 }
 
@@ -57,7 +47,7 @@ pub fn part1(dirs: &[usize]) -> usize {
 
 #[aoc(day7, part2)]
 pub fn part2(dirs: &[usize]) -> usize {
-    let need = 30000000 - (70000000 - dirs[0]);
+    let need = 30000000 - (70000000 - dirs[dirs.len() - 1]);
     *dirs.iter().filter(|&&v| v > need).min().unwrap()
 }
 
