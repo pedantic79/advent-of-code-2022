@@ -3,32 +3,39 @@ use std::{convert::Infallible, str::FromStr};
 use aoc_runner_derive::{aoc, aoc_generator};
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Move {
-    Up(isize),
-    Down(isize),
-    Right(isize),
-    Left(isize),
+pub struct Move {
+    dir: u8,
+    mag: usize,
 }
 
 impl FromStr for Move {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use Move::*;
-        let x = s[2..].parse().unwrap();
-        Ok(match s.as_bytes()[0] {
-            b'U' => Up(x),
-            b'D' => Down(x),
-            b'R' => Right(x),
-            b'L' => Left(x),
-            _ => panic!("unknown byte"),
+        let mag = s[2..].parse().unwrap();
+
+        Ok(Self {
+            dir: s.as_bytes()[0],
+            mag,
         })
+    }
+}
+
+impl Move {
+    fn get(&self) -> (isize, isize, usize) {
+        let x = self.mag;
+        match self.dir {
+            b'U' => (1, 0, x),
+            b'D' => (-1, 0, x),
+            b'R' => (0, 1, x),
+            b'L' => (0, -1, x),
+            _ => panic!("invalid move"),
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct Snake<const N: usize> {
-    head: (isize, isize),
     rope: [(isize, isize); N],
     pos: rustc_hash::FxHashSet<(isize, isize)>,
 }
@@ -36,7 +43,6 @@ pub struct Snake<const N: usize> {
 impl<const N: usize> Default for Snake<N> {
     fn default() -> Self {
         Self {
-            head: Default::default(),
             rope: [Default::default(); N],
             pos: Default::default(),
         }
@@ -45,21 +51,14 @@ impl<const N: usize> Default for Snake<N> {
 
 impl<const N: usize> Snake<N> {
     pub fn process_move(&mut self, m: &Move) {
-        let (r, c, mag) = match m {
-            Move::Up(x) => (1, 0, *x),
-            Move::Down(x) => (-1, 0, *x),
-            Move::Right(x) => (0, 1, *x),
-            Move::Left(x) => (0, -1, *x),
-        };
-
+        let (r, c, mag) = m.get();
         for _ in 0..mag {
-            self.head = (self.head.0 + r, self.head.1 + c);
+            self.rope[0] = (self.rope[0].0 + r, self.rope[0].1 + c);
 
-            let mut last = self.head;
-            for x in 0..N {
-                self.update_tail(x, last);
-                last = self.rope[x];
+            for x in 1..N {
+                self.update_tail(x, self.rope[x - 1]);
             }
+            self.pos.insert(self.rope[N - 1]);
         }
     }
 
@@ -69,10 +68,6 @@ impl<const N: usize> Snake<N> {
         if d.0.abs() > 1 || d.1.abs() > 1 {
             self.rope[pos].0 += d.0.signum();
             self.rope[pos].1 += d.1.signum();
-        }
-
-        if pos == N - 1 {
-            self.pos.insert(self.rope[pos]);
         }
     }
 }
@@ -94,12 +89,12 @@ fn solve<const N: usize>(inputs: &[Move]) -> usize {
 
 #[aoc(day9, part1)]
 pub fn part1(inputs: &[Move]) -> usize {
-    solve::<1>(inputs)
+    solve::<2>(inputs)
 }
 
 #[aoc(day9, part2)]
 pub fn part2(inputs: &[Move]) -> usize {
-    solve::<9>(inputs)
+    solve::<10>(inputs)
 }
 
 #[cfg(test)]
