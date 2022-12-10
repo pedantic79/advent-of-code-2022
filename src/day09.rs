@@ -56,18 +56,24 @@ impl<const N: usize> Snake<N> {
             self.rope[0] = (self.rope[0].0 + r, self.rope[0].1 + c);
 
             for x in 1..N {
-                self.update_tail(x, self.rope[x - 1]);
+                if !self.update_tail(x, self.rope[x - 1]) {
+                    // not updated
+                    break;
+                }
             }
             self.pos.insert(self.rope[N - 1]);
         }
     }
 
-    pub fn update_tail(&mut self, pos: usize, last: (isize, isize)) {
+    pub fn update_tail(&mut self, pos: usize, last: (isize, isize)) -> bool {
         let d = (last.0 - self.rope[pos].0, last.1 - self.rope[pos].1);
 
         if d.0.abs() > 1 || d.1.abs() > 1 {
             self.rope[pos].0 += d.0.signum();
             self.rope[pos].1 += d.1.signum();
+            true
+        } else {
+            false
         }
     }
 }
