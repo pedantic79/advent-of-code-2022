@@ -27,30 +27,34 @@ pub fn generator(input: &str) -> Vec<Instructions> {
     parse_lines(input)
 }
 
-#[aoc(day10, part1)]
-pub fn part1(inputs: &[Instructions]) -> i64 {
+fn solve(inputs: &[Instructions], mut update: impl FnMut(i64, i64)) {
     let mut x = 1;
     let mut cycle = 1;
-    let mut total = 0;
     for ins in inputs {
-        if cycle == 20 || (cycle - 20) % 40 == 0 {
-            total += cycle * x;
-        }
-
+        update(cycle, x);
         match ins {
             Instructions::Noop => {
                 cycle += 1;
             }
             Instructions::Addx(n) => {
                 cycle += 1;
-                if cycle == 20 || (cycle - 20) % 40 == 0 {
-                    total += cycle * x;
-                }
+                update(cycle, x);
                 x += n;
                 cycle += 1;
             }
         }
     }
+}
+
+#[aoc(day10, part1)]
+pub fn part1(inputs: &[Instructions]) -> i64 {
+    let mut total = 0;
+    solve(inputs, |cycle, x| {
+        if cycle % 40 == 20 {
+            total += cycle * x;
+        }
+    });
+
     total
 }
 
@@ -67,22 +71,7 @@ fn draw(screen: &mut [[u8; 40]; 6], cycle: i64, x: i64) {
 pub fn part2(inputs: &[Instructions]) -> String {
     let mut screen = [[b'.'; 40]; 6];
 
-    let mut x = 1;
-    let mut cycle = 1;
-    for ins in inputs {
-        draw(&mut screen, cycle, x);
-        match ins {
-            Instructions::Noop => {
-                cycle += 1;
-            }
-            Instructions::Addx(n) => {
-                cycle += 1;
-                draw(&mut screen, cycle, x);
-                x += n;
-                cycle += 1;
-            }
-        }
-    }
+    solve(inputs, |cycle, x| draw(&mut screen, cycle, x));
 
     unsafe {
         String::from_utf8_unchecked(screen.into_iter().fold(
