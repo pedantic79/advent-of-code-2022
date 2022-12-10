@@ -1,6 +1,8 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use std::{convert::Infallible, str::FromStr};
 
+use crate::common::utils::parse_lines;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instructions {
     Noop,
@@ -22,7 +24,7 @@ impl FromStr for Instructions {
 
 #[aoc_generator(day10)]
 pub fn generator(input: &str) -> Vec<Instructions> {
-    input.lines().map(|line| line.parse().unwrap()).collect()
+    parse_lines(input)
 }
 
 #[aoc(day10, part1)]

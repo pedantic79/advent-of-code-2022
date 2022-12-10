@@ -2,6 +2,8 @@ use std::{convert::Infallible, str::FromStr};
 
 use aoc_runner_derive::{aoc, aoc_generator};
 
+use crate::common::utils::parse_lines;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Move {
     dir: u8,
@@ -80,7 +82,7 @@ impl<const N: usize> Snake<N> {
 
 #[aoc_generator(day9)]
 pub fn generator(input: &str) -> Vec<Move> {
-    input.lines().map(|l| l.parse().unwrap()).collect()
+    parse_lines(input)
 }
 
 fn solve<const N: usize>(inputs: &[Move]) -> usize {

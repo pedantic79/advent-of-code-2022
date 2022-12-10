@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Debug, str::FromStr};
 
 pub fn parse_pair<T: FromStr>(s: &str) -> Option<(T, T)> {
     parse_split_once(s, ',')
@@ -30,6 +30,29 @@ where
     let l = l.parse().ok()?;
     let r = r.parse().ok()?;
     Some((l, r))
+}
+
+pub fn parse_lines<T>(s: &str) -> Vec<T>
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    s.lines()
+        .map(|line| line.parse())
+        .collect::<Result<_, _>>()
+        .unwrap()
+}
+
+pub fn parse_split<'a, T, P>(s: &'a str, p: P) -> Vec<T>
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+    P: stable_pattern::Pattern<'a>,
+{
+    pattern::split(s, p)
+        .map(|line| line.parse())
+        .collect::<Result<_, _>>()
+        .unwrap()
 }
 
 mod pattern {
