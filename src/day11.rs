@@ -1,11 +1,10 @@
-use aoc_runner_derive::{aoc, aoc_generator};
-use std::{collections::VecDeque, convert::Infallible, fmt::Debug, str::FromStr};
-
 use crate::common::heap_retain;
+use aoc_runner_derive::{aoc, aoc_generator};
+use std::{convert::Infallible, fmt::Debug, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Monkey {
-    items: VecDeque<u64>,
+    items: Vec<u64>,
     op: Op,
     test_divisor: u64,
     test_true: usize,
@@ -66,12 +65,11 @@ impl FromStr for Op {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (_, operation) = s.rsplit_once(" = ").unwrap();
-        Ok(if operation == "old * old" {
+        Ok(if operation.as_bytes()[6] == b'o' {
             Op::Square
         } else {
-            let (_, n) = operation.rsplit_once(&['*', '+'][..]).unwrap();
-            let n = n.trim_start().parse().unwrap();
-            if operation.contains('*') {
+            let n = parse_trailing_number(operation);
+            if operation.as_bytes()[4] == b'*' {
                 Op::Mul(n)
             } else {
                 Op::Add(n)
@@ -108,15 +106,17 @@ fn solve<const ITERATIONS: usize>(
     for _ in 0..ITERATIONS {
         for i in 0..monkeys.len() {
             inspects[i] += monkeys[i].items.len();
-            while let Some(item) = monkeys[i].items.pop_front() {
+            for j in 0..monkeys[i].items.len() {
+                let item = monkeys[i].items[j];
                 let worry = worry_maintainer(monkeys[i].op.run(item));
                 let idx = if worry % monkeys[i].test_divisor == 0 {
                     monkeys[i].test_true
                 } else {
                     monkeys[i].test_false
                 };
-                monkeys[idx].items.push_back(worry);
+                monkeys[idx].items.push(worry);
             }
+            monkeys[i].items.clear();
         }
     }
 
@@ -135,7 +135,10 @@ pub fn part1(monkeys: &[Monkey]) -> usize {
 pub fn part2(monkeys: &[Monkey]) -> usize {
     let all_divisor: u64 = monkeys.iter().map(|m| m.test_divisor).product();
 
-    solve::<10000>(monkeys, |x| x % all_divisor)
+    solve::<10000>(
+        monkeys,
+        |x| if x > all_divisor { x % all_divisor } else { x },
+    )
 }
 
 #[cfg(test)]
