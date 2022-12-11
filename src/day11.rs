@@ -1,23 +1,63 @@
-use std::{cmp::Reverse, collections::VecDeque, convert::Infallible, fmt::Debug, str::FromStr};
-
 use aoc_runner_derive::{aoc, aoc_generator};
+use std::{collections::VecDeque, convert::Infallible, fmt::Debug, str::FromStr};
 
-#[allow(non_camel_case_types)]
-type int = u64;
+use crate::common::heap_retain;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Monkey {
-    items: VecDeque<int>,
+    items: VecDeque<u64>,
     op: Op,
-    test_divisor: int,
+    test_divisor: u64,
     test_true: usize,
     test_false: usize,
 }
 
+fn parse_trailing_number<T>(s: &str) -> T
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    s.rsplit_once(' ').unwrap().1.parse().unwrap()
+}
+
+fn parse_v<T, C>(s: &str) -> C
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+    C: FromIterator<T>,
+{
+    let (_, x) = s.rsplit_once(':').unwrap();
+    x.split(',')
+        .map(|x| x.trim_start().parse().unwrap())
+        .collect()
+}
+
+impl FromStr for Monkey {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut lines = s.lines();
+        lines.next();
+        let items = parse_v(lines.next().unwrap());
+        let op = lines.next().unwrap().parse().unwrap();
+        let test_divisor = parse_trailing_number(lines.next().unwrap());
+        let test_true = parse_trailing_number(lines.next().unwrap());
+        let test_false = parse_trailing_number(lines.next().unwrap());
+
+        Ok(Monkey {
+            items,
+            op,
+            test_divisor,
+            test_true,
+            test_false,
+        })
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Op {
-    Add(int),
-    Mul(int),
+    Add(u64),
+    Mul(u64),
     Square,
 }
 
@@ -41,7 +81,7 @@ impl FromStr for Op {
 }
 
 impl Op {
-    fn run(&self, other: int) -> int {
+    fn run(&self, other: u64) -> u64 {
         match self {
             Op::Add(x) => x + other,
             Op::Mul(x) => x * other,
@@ -51,163 +91,85 @@ impl Op {
 }
 
 #[aoc_generator(day11)]
-pub fn generator(_input: &str) -> Vec<Monkey> {
-    #![allow(clippy::vec_init_then_push)]
-    let mut res = vec![];
-    // res.push(Monkey {
-    //     items: VecDeque::from([79, 98]),
-    //     op: Op::Mul(19),
-    //     test_divisor: 23,
-    //     test_true: 2,
-    //     test_false: 3,
-    // });
+pub fn generator(input: &str) -> Vec<Monkey> {
+    input
+        .split("\n\n")
+        .map(|chunk| chunk.parse().unwrap())
+        .collect()
+}
 
-    // res.push(Monkey {
-    //     items: VecDeque::from([54, 65, 75, 74]),
-    //     op: Op::Add(6),
-    //     test_divisor: 19,
-    //     test_true: 2,
-    //     test_false: 0,
-    // });
+fn solve<const ITERATIONS: usize>(
+    monkeys: &[Monkey],
+    worry_maintainer: impl Fn(u64) -> u64,
+) -> usize {
+    let mut monkeys = monkeys.to_vec();
+    let mut inspects = vec![0; monkeys.len()];
 
-    // res.push(Monkey {
-    //     items: VecDeque::from([79, 60, 97]),
-    //     op: Op::Square,
-    //     test_divisor: 13,
-    //     test_true: 1,
-    //     test_false: 3,
-    // });
+    for _ in 0..ITERATIONS {
+        for i in 0..monkeys.len() {
+            inspects[i] += monkeys[i].items.len();
+            while let Some(item) = monkeys[i].items.pop_front() {
+                let worry = worry_maintainer(monkeys[i].op.run(item));
+                let idx = if worry % monkeys[i].test_divisor == 0 {
+                    monkeys[i].test_true
+                } else {
+                    monkeys[i].test_false
+                };
+                monkeys[idx].items.push_back(worry);
+            }
+        }
+    }
 
-    // res.push(Monkey {
-    //     items: VecDeque::from([74]),
-    //     op: Op::Add(3),
-    //     test_divisor: 17,
-    //     test_true: 0,
-    //     test_false: 1,
-    // });
-
-    // INPUT
-    res.push(Monkey {
-        items: [54, 53].into(),
-        op: Op::Mul(3),
-        test_divisor: 2,
-        test_true: 2,
-        test_false: 6,
-    });
-
-    res.push(Monkey {
-        items: [95, 88, 75, 81, 91, 67, 65, 84].into(),
-        op: Op::Mul(11),
-        test_divisor: 7,
-        test_true: 3,
-        test_false: 4,
-    });
-
-    res.push(Monkey {
-        items: [76, 81, 50, 93, 96, 81, 83].into(),
-        op: Op::Add(6),
-        test_divisor: 3,
-        test_true: 5,
-        test_false: 1,
-    });
-
-    res.push(Monkey {
-        items: [83, 85, 85, 63].into(),
-        op: Op::Add(4),
-        test_divisor: 11,
-        test_true: 7,
-        test_false: 4,
-    });
-
-    res.push(Monkey {
-        items: [85, 52, 64].into(),
-        op: Op::Add(8),
-        test_divisor: 17,
-        test_true: 0,
-        test_false: 7,
-    });
-    res.push(Monkey {
-        items: [57].into(),
-        op: Op::Add(2),
-        test_divisor: 5,
-        test_true: 1,
-        test_false: 3,
-    });
-    res.push(Monkey {
-        items: [60, 95, 76, 66, 91].into(),
-        op: Op::Square,
-        test_divisor: 13,
-        test_true: 2,
-        test_false: 5,
-    });
-
-    res.push(Monkey {
-        items: [65, 84, 76, 72, 79, 65].into(),
-        op: Op::Add(5),
-        test_divisor: 19,
-        test_true: 6,
-        test_false: 0,
-    });
-
-    res
+    let [a, b] = inspects
+        .into_iter()
+        .fold([0; 2], heap_retain::accumulate_max_n);
+    a * b
 }
 
 #[aoc(day11, part1)]
 pub fn part1(monkeys: &[Monkey]) -> usize {
-    let mut monkeys = monkeys.to_vec();
-    let mut inspects = vec![0; monkeys.len()];
-
-    for _ in 0..20 {
-        for i in 0..monkeys.len() {
-            while let Some(item) = monkeys[i].items.pop_front() {
-                inspects[i] += 1;
-                let worry = monkeys[i].op.run(item) / 3;
-                if worry % monkeys[i].test_divisor == 0 {
-                    let idx = monkeys[i].test_true;
-                    monkeys[idx].items.push_back(worry);
-                } else {
-                    let idx = monkeys[i].test_false;
-                    monkeys[idx].items.push_back(worry);
-                }
-            }
-        }
-    }
-
-    inspects.select_nth_unstable_by_key(1, |&x| Reverse(x));
-    inspects[0..2].iter().product()
+    solve::<20>(monkeys, |x| x / 3)
 }
 
 #[aoc(day11, part2)]
 pub fn part2(monkeys: &[Monkey]) -> usize {
-    let mut monkeys = monkeys.to_vec();
-    let mut inspects = vec![0; monkeys.len()];
-    let all_divisor: int = monkeys.iter().map(|m| m.test_divisor).product();
+    let all_divisor: u64 = monkeys.iter().map(|m| m.test_divisor).product();
 
-    for _ in 0..10000 {
-        for i in 0..monkeys.len() {
-            while let Some(item) = monkeys[i].items.pop_front() {
-                inspects[i] += 1;
-                let worry = monkeys[i].op.run(item) % all_divisor;
-                if worry % monkeys[i].test_divisor == 0 {
-                    let idx = monkeys[i].test_true;
-                    monkeys[idx].items.push_back(worry);
-                } else {
-                    let idx = monkeys[i].test_false;
-                    monkeys[idx].items.push_back(worry);
-                }
-            }
-        }
-    }
-
-    inspects.select_nth_unstable_by_key(1, |&x| Reverse(x));
-    inspects[0..2].iter().product()
+    solve::<10000>(monkeys, |x| x % all_divisor)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const SAMPLE: &str = r"..##.......";
+    const SAMPLE: &str = r"Monkey 0:
+  Starting items: 79, 98
+  Operation: new = old * 19
+  Test: divisible by 23
+    If true: throw to monkey 2
+    If false: throw to monkey 3
+
+Monkey 1:
+  Starting items: 54, 65, 75, 74
+  Operation: new = old + 6
+  Test: divisible by 19
+    If true: throw to monkey 2
+    If false: throw to monkey 0
+
+Monkey 2:
+  Starting items: 79, 60, 97
+  Operation: new = old * old
+  Test: divisible by 13
+    If true: throw to monkey 1
+    If false: throw to monkey 3
+
+Monkey 3:
+  Starting items: 74
+  Operation: new = old + 3
+  Test: divisible by 17
+    If true: throw to monkey 0
+    If false: throw to monkey 1
+";
 
     #[test]
     pub fn test_input() {
@@ -218,12 +180,12 @@ mod tests {
 
     #[test]
     pub fn test1() {
-        // assert_eq!(part1(&generator(SAMPLE)), 7);
+        assert_eq!(part1(&generator(SAMPLE)), 10605);
     }
 
     #[test]
     pub fn test2() {
-        // assert_eq!(part2(&generator(SAMPLE)), 336);
+        assert_eq!(part2(&generator(SAMPLE)), 2713310158);
     }
 
     mod regression {
