@@ -1,6 +1,5 @@
 use crate::common::utils::neighbors;
 use aoc_runner_derive::{aoc, aoc_generator};
-use itertools::Itertools;
 use pathfinding::prelude::bfs;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -48,8 +47,7 @@ pub fn part1(inputs: &Object) -> usize {
             let height = inputs.map[state.0][state.1];
 
             neighbors(state.0, state.1, r_max, c_max)
-                .filter(|(y, x)| height + 1 >= inputs.map[*y][*x])
-                .collect::<Vec<_>>()
+                .filter(move |(y, x)| height + 1 >= inputs.map[*y][*x])
         },
         |state| state == &inputs.end,
     )
@@ -62,26 +60,18 @@ pub fn part1(inputs: &Object) -> usize {
 pub fn part2(inputs: &Object) -> usize {
     let r_max = inputs.map.len();
     let c_max = inputs.map[0].len();
-    (0..r_max)
-        .cartesian_product(0..c_max)
-        .filter(|(r, c)| inputs.map[*r][*c] == b'a')
-        .map(|(r, c)| {
-            bfs(
-                &(r, c),
-                |state| {
-                    let height = inputs.map[state.0][state.1];
+    bfs(
+        &inputs.end,
+        |state| {
+            let height = inputs.map[state.0][state.1];
 
-                    neighbors(state.0, state.1, r_max, c_max)
-                        .filter(|(y, x)| height + 1 >= inputs.map[*y][*x])
-                        .collect::<Vec<_>>()
-                },
-                |state| state == &inputs.end,
-            )
-            .map(|v| v.len())
-            .unwrap_or(usize::MAX)
-        })
-        .min()
-        .unwrap()
+            neighbors(state.0, state.1, r_max, c_max)
+                .filter(move |(y, x)| inputs.map[*y][*x] + 1 >= height)
+        },
+        |state| inputs.map[state.0][state.1] == b'a',
+    )
+    .unwrap()
+    .len()
         - 1
 }
 
