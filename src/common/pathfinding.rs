@@ -6,8 +6,7 @@ use bit_set::BitSet;
 /// Based on [pathfinding](https://github.com/samueltardieu/pathfinding/blob/v4.0.0/src/directed/bfs.rs#L78)
 /// `bfs` algorithm.
 ///
-/// - `mapper`, must map to a usize. This is useful to map coordinates, but not hashing. Bits should be
-///    tightly packed, otherwise the BitSet may grow too large.
+/// - `mapper`, must map to a usize. This is useful to map coordinates, but not hashing.
 pub fn bfs_count_bitset<N, FN, IN, FS, FM>(
     start: &N,
     mut successors: FN,

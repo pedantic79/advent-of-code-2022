@@ -1,16 +1,15 @@
-use crate::common::utils::neighbors;
+use crate::common::{pathfinding::bfs_count_bitset, utils::neighbors};
 use aoc_runner_derive::{aoc, aoc_generator};
-use pathfinding::prelude::bfs;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Object {
+pub struct HeightMap {
     map: Vec<Vec<u8>>,
     start: (usize, usize),
     end: (usize, usize),
 }
 
 #[aoc_generator(day12)]
-pub fn generator(input: &str) -> Object {
+pub fn generator(input: &str) -> HeightMap {
     let mut start = (0, 0);
     let mut end = (0, 0);
     let map: Vec<_> = input
@@ -34,14 +33,15 @@ pub fn generator(input: &str) -> Object {
         })
         .collect();
 
-    Object { map, start, end }
+    HeightMap { map, start, end }
 }
 
 #[aoc(day12, part1)]
-pub fn part1(inputs: &Object) -> usize {
+pub fn part1(inputs: &HeightMap) -> usize {
     let r_max = inputs.map.len();
     let c_max = inputs.map[0].len();
-    bfs(
+
+    bfs_count_bitset(
         &inputs.start,
         |state| {
             let height = inputs.map[state.0][state.1];
@@ -50,17 +50,16 @@ pub fn part1(inputs: &Object) -> usize {
                 .filter(move |(y, x)| height + 1 >= inputs.map[*y][*x])
         },
         |state| state == &inputs.end,
+        |x| x.0 * c_max + x.1,
     )
     .unwrap()
-    .len()
-        - 1
 }
 
 #[aoc(day12, part2)]
-pub fn part2(inputs: &Object) -> usize {
+pub fn part2(inputs: &HeightMap) -> usize {
     let r_max = inputs.map.len();
     let c_max = inputs.map[0].len();
-    bfs(
+    bfs_count_bitset(
         &inputs.end,
         |state| {
             let height = inputs.map[state.0][state.1];
@@ -69,10 +68,9 @@ pub fn part2(inputs: &Object) -> usize {
                 .filter(move |(y, x)| inputs.map[*y][*x] + 1 >= height)
         },
         |state| inputs.map[state.0][state.1] == b'a',
+        |x| x.0 * c_max + x.1,
     )
     .unwrap()
-    .len()
-        - 1
 }
 
 #[cfg(test)]
