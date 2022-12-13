@@ -1,32 +1,13 @@
 use std::{convert::Infallible, str::FromStr};
 
-use aoc_runner_derive::aoc;
-use nom::{
-    branch::alt, bytes::complete::tag, combinator::map, multi::separated_list0,
-    sequence::delimited, IResult,
-};
+use aoc_runner_derive::{aoc, aoc_generator};
+use serde::Deserialize;
 
-use crate::common::utils::parse_split_once;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize)]
+#[serde(untagged)]
 pub enum Signal {
     List(Vec<Signal>),
     Value(u8),
-}
-
-fn num(s: &str) -> IResult<&str, Signal> {
-    map(nom::character::complete::u8, Signal::Value)(s)
-}
-
-fn list(s: &str) -> IResult<&str, Signal> {
-    map(
-        delimited(tag("["), separated_list0(tag(","), signal), tag("]")),
-        Signal::List,
-    )(s)
-}
-
-fn signal(s: &str) -> IResult<&str, Signal> {
-    alt((num, list))(s)
 }
 
 impl PartialOrd for Signal {
@@ -50,47 +31,49 @@ impl FromStr for Signal {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(signal(s).unwrap().1)
+        Ok(serde_json::from_str(s).unwrap())
     }
 }
 
+#[aoc_generator(day13)]
+pub fn generator(inputs: &str) -> Vec<Signal> {
+    inputs
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.parse().unwrap())
+        .collect()
+}
+
 #[aoc(day13, part1)]
-pub fn part1(input: &str) -> usize {
+pub fn part1(input: &[Signal]) -> usize {
     input
-        .split("\n\n")
-        .map(|x| parse_split_once::<Signal, _>(x, '\n').unwrap())
+        .chunks(2)
         .enumerate()
-        .filter_map(|(i, (a, b))| if a <= b { Some(i + 1) } else { None })
+        .filter_map(|(i, x)| if x[0] <= x[1] { Some(i + 1) } else { None })
         .sum()
 }
 
 #[aoc(day13, part2)]
-pub fn part2(input: &str) -> usize {
+pub fn part2(input: &[Signal]) -> usize {
     // let a = signal("[[2]]").unwrap().1;
     // let b = signal("[[6]]").unwrap().1;
     let a = Signal::List(vec![Signal::List(vec![Signal::Value(2)])]);
     let b = Signal::List(vec![Signal::List(vec![Signal::Value(6)])]);
 
-    let mut v: Vec<_> = input
-        .lines()
-        .filter(|l| !l.is_empty())
-        .map(|x| x.parse().unwrap())
-        .collect();
-
-    v.push(a.clone());
-    v.push(b.clone());
-    v.sort_unstable();
-
-    v.iter()
-        .enumerate()
-        .filter_map(|(i, s)| {
-            if s == &b || s == &a {
-                Some(i + 1)
-            } else {
-                None
+    let (x, y) = input
+        .iter()
+        .fold((1, 2), |(mut count_a, mut count_b), sig| {
+            if sig < &b {
+                count_b += 1;
+                if sig < &a {
+                    count_a += 1;
+                }
             }
-        })
-        .product()
+
+            (count_a, count_b)
+        });
+
+    x * y
 }
 
 #[cfg(test)]
@@ -130,12 +113,12 @@ mod tests {
 
     #[test]
     pub fn test1() {
-        assert_eq!(part1(SAMPLE), 13);
+        assert_eq!(part1(&generator(SAMPLE)), 13);
     }
 
     #[test]
     pub fn test2() {
-        assert_eq!(part2(SAMPLE), 140);
+        assert_eq!(part2(&generator(SAMPLE)), 140);
     }
 
     mod regression {
@@ -147,10 +130,10 @@ mod tests {
         #[test]
         pub fn test() {
             let input = INPUT.trim_end_matches('\n');
-            // let output = generator(input);
+            let output = generator(input);
 
-            assert_eq!(part1(input), ANSWERS.0);
-            assert_eq!(part2(input), ANSWERS.1);
+            assert_eq!(part1(&output), ANSWERS.0);
+            assert_eq!(part2(&output), ANSWERS.1);
         }
     }
 }
