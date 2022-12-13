@@ -1,30 +1,13 @@
 use std::{convert::Infallible, str::FromStr};
 
 use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{
-    branch::alt, bytes::complete::tag, combinator::map, multi::separated_list0,
-    sequence::delimited, IResult,
-};
+use serde::Deserialize;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize)]
+#[serde(untagged)]
 pub enum Signal {
     List(Vec<Signal>),
     Value(u8),
-}
-
-fn num(s: &str) -> IResult<&str, Signal> {
-    map(nom::character::complete::u8, Signal::Value)(s)
-}
-
-fn list(s: &str) -> IResult<&str, Signal> {
-    map(
-        delimited(tag("["), separated_list0(tag(","), signal), tag("]")),
-        Signal::List,
-    )(s)
-}
-
-fn signal(s: &str) -> IResult<&str, Signal> {
-    alt((num, list))(s)
 }
 
 impl PartialOrd for Signal {
@@ -48,7 +31,7 @@ impl FromStr for Signal {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(signal(s).unwrap().1)
+        Ok(serde_json::from_str(s).unwrap())
     }
 }
 
