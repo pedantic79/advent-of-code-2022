@@ -1,5 +1,7 @@
-use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{branch::alt, bytes::complete::tag, multi::separated_list1, sequence::tuple, IResult};
+use std::{convert::Infallible, str::FromStr};
+
+use aoc_runner_derive::aoc;
+use nom::{branch::alt, bytes::complete::tag, multi::separated_list0, sequence::tuple, IResult};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Signal {
@@ -13,20 +15,14 @@ fn num(s: &str) -> IResult<&str, Signal> {
     Ok((s, Signal::Value(val)))
 }
 
-fn signal(s: &str) -> IResult<&str, Signal> {
-    alt((num, list, empty))(s)
-}
-
-fn empty(s: &str) -> IResult<&str, Signal> {
-    let (s, _) = tuple((tag("["), tag("]")))(s)?;
-
-    Ok((s, Signal::List(vec![])))
-}
-
 fn list(s: &str) -> IResult<&str, Signal> {
-    let (s, (_, sig, _)) = tuple((tag("["), separated_list1(tag(","), signal), tag("]")))(s)?;
+    let (s, (_, sig, _)) = tuple((tag("["), separated_list0(tag(","), signal), tag("]")))(s)?;
 
     Ok((s, Signal::List(sig)))
+}
+
+fn signal(s: &str) -> IResult<&str, Signal> {
+    alt((num, list))(s)
 }
 
 impl PartialOrd for Signal {
@@ -34,6 +30,7 @@ impl PartialOrd for Signal {
         Some(self.cmp(other))
     }
 }
+
 impl Ord for Signal {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
@@ -42,6 +39,14 @@ impl Ord for Signal {
             (Signal::List(a), Signal::Value(b)) => a.cmp(&vec![Signal::Value(*b)]),
             (Signal::List(a), Signal::List(b)) => a.cmp(b),
         }
+    }
+}
+
+impl FromStr for Signal {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(signal(s).unwrap().1)
     }
 }
 
