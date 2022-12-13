@@ -1,24 +1,28 @@
 use std::{convert::Infallible, str::FromStr};
 
 use aoc_runner_derive::aoc;
-use nom::{branch::alt, bytes::complete::tag, multi::separated_list0, sequence::tuple, IResult};
+use nom::{
+    branch::alt, bytes::complete::tag, combinator::map, multi::separated_list0,
+    sequence::delimited, IResult,
+};
+
+use crate::common::utils::parse_split_once;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Signal {
     List(Vec<Signal>),
-    Value(u32),
+    Value(u8),
 }
 
 fn num(s: &str) -> IResult<&str, Signal> {
-    let (s, val) = nom::character::complete::u32(s)?;
-
-    Ok((s, Signal::Value(val)))
+    map(nom::character::complete::u8, Signal::Value)(s)
 }
 
 fn list(s: &str) -> IResult<&str, Signal> {
-    let (s, (_, sig, _)) = tuple((tag("["), separated_list0(tag(","), signal), tag("]")))(s)?;
-
-    Ok((s, Signal::List(sig)))
+    map(
+        delimited(tag("["), separated_list0(tag(","), signal), tag("]")),
+        Signal::List,
+    )(s)
 }
 
 fn signal(s: &str) -> IResult<&str, Signal> {
@@ -35,8 +39,8 @@ impl Ord for Signal {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
             (Signal::Value(a), Signal::Value(b)) => a.cmp(b),
-            (Signal::Value(a), Signal::List(b)) => vec![Signal::Value(*a)].cmp(b),
-            (Signal::List(a), Signal::Value(b)) => a.cmp(&vec![Signal::Value(*b)]),
+            (Signal::Value(a), Signal::List(b)) => [Signal::Value(*a)][..].cmp(b),
+            (Signal::List(a), Signal::Value(b)) => a[..].cmp(&[Signal::Value(*b)][..]),
             (Signal::List(a), Signal::List(b)) => a.cmp(b),
         }
     }
@@ -54,11 +58,7 @@ impl FromStr for Signal {
 pub fn part1(input: &str) -> usize {
     input
         .split("\n\n")
-        .map(|x| {
-            let (a, b) = x.split_once('\n').unwrap();
-
-            (signal(a).unwrap().1, signal(b).unwrap().1)
-        })
+        .map(|x| parse_split_once::<Signal, _>(x, '\n').unwrap())
         .enumerate()
         .filter_map(|(i, (a, b))| if a <= b { Some(i + 1) } else { None })
         .sum()
@@ -66,30 +66,31 @@ pub fn part1(input: &str) -> usize {
 
 #[aoc(day13, part2)]
 pub fn part2(input: &str) -> usize {
-    let a = signal("[[2]]").unwrap().1;
-    let b = signal("[[6]]").unwrap().1;
+    // let a = signal("[[2]]").unwrap().1;
+    // let b = signal("[[6]]").unwrap().1;
+    let a = Signal::List(vec![Signal::List(vec![Signal::Value(2)])]);
+    let b = Signal::List(vec![Signal::List(vec![Signal::Value(6)])]);
 
     let mut v: Vec<_> = input
         .lines()
         .filter(|l| !l.is_empty())
-        .map(|x| signal(x).unwrap().1)
+        .map(|x| x.parse().unwrap())
         .collect();
 
     v.push(a.clone());
     v.push(b.clone());
     v.sort_unstable();
 
-    let a = (1..)
-        .zip(v.iter())
-        .find_map(|x| if x.1 == &a { Some(x.0) } else { None })
-        .unwrap();
-
-    let b = (1..)
-        .zip(v.iter())
-        .find_map(|x| if x.1 == &b { Some(x.0) } else { None })
-        .unwrap();
-
-    a * b
+    v.iter()
+        .enumerate()
+        .filter_map(|(i, s)| {
+            if s == &b || s == &a {
+                Some(i + 1)
+            } else {
+                None
+            }
+        })
+        .product()
 }
 
 #[cfg(test)]
