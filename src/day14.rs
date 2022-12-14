@@ -1,7 +1,17 @@
+use std::ops::RangeInclusive;
+
 use aoc_runner_derive::{aoc, aoc_generator};
 use rustc_hash::FxHashMap as HashMap;
 
 use crate::common::utils::parse_pair;
+
+fn mk_range_inc(a: usize, b: usize) -> RangeInclusive<usize> {
+    if a < b {
+        a..=b
+    } else {
+        b..=a
+    }
+}
 
 #[aoc_generator(day14)]
 pub fn generator(input: &str) -> HashMap<(usize, usize), u8> {
@@ -16,17 +26,11 @@ pub fn generator(input: &str) -> HashMap<(usize, usize), u8> {
         .for_each(|line| {
             line.windows(2).for_each(|x| {
                 if x[0].0 == x[1].0 {
-                    for y in x[0].1..=x[1].1 {
-                        map.insert((x[0].0, y), b'#');
-                    }
-                    for y in x[1].1..=x[0].1 {
+                    for y in mk_range_inc(x[0].1, x[1].1) {
                         map.insert((x[0].0, y), b'#');
                     }
                 } else {
-                    for y in x[0].0..=x[1].0 {
-                        map.insert((y, x[0].1), b'#');
-                    }
-                    for y in x[1].0..=x[0].0 {
+                    for y in mk_range_inc(x[0].0, x[1].0) {
                         map.insert((y, x[0].1), b'#');
                     }
                 }
@@ -40,35 +44,27 @@ pub fn generator(input: &str) -> HashMap<(usize, usize), u8> {
 pub fn part1(map: &HashMap<(usize, usize), u8>) -> usize {
     let max = map.keys().map(|x| x.1).max().unwrap();
     let mut map = map.clone();
-
     let mut count = 0;
 
     'outer: loop {
-        let mut x = 500;
-        let mut y = 0;
+        let (mut x, mut y) = (500_usize, 0);
 
-        loop {
+        'inner: loop {
             if y > max {
                 break 'outer;
             }
 
-            if !map.contains_key(&(x, y + 1)) {
-                y += 1;
-                continue;
-            } else if !map.contains_key(&(x - 1, y + 1)) {
-                x -= 1;
-                y += 1;
-                continue;
-            } else if !map.contains_key(&(x + 1, y + 1)) {
-                x += 1;
-                y += 1;
-                continue;
-            } else {
-                break;
+            y += 1;
+            for x_diff in [0, -1, 1] {
+                if !map.contains_key(&(x.wrapping_add_signed(x_diff), y)) {
+                    x = x.wrapping_add_signed(x_diff);
+                    continue 'inner;
+                }
             }
+            map.insert((x, y - 1), b'o');
+            count += 1;
+            break;
         }
-        map.insert((x, y), b'o');
-        count += 1;
     }
 
     count
@@ -76,33 +72,27 @@ pub fn part1(map: &HashMap<(usize, usize), u8>) -> usize {
 
 #[aoc(day14, part2)]
 pub fn part2(map: &HashMap<(usize, usize), u8>) -> usize {
-    let max = map.keys().map(|x| x.1).max().unwrap();
+    let max = map.keys().map(|x| x.1).max().unwrap() + 2;
     let mut map = map.clone();
-    for x in 0..1000 {
-        map.insert((x, max + 2), b'#');
-    }
-
     let mut count = 0;
-    'outer: loop {
-        let mut x = 500;
-        let mut y = 0;
 
-        loop {
-            if !map.contains_key(&(x, y + 1)) {
+    'outer: loop {
+        let (mut x, mut y) = (500_usize, 0);
+
+        'inner: loop {
+            if y < max {
                 y += 1;
-                continue;
-            } else if !map.contains_key(&(x - 1, y + 1)) {
-                x -= 1;
-                y += 1;
-                continue;
-            } else if !map.contains_key(&(x + 1, y + 1)) {
-                x += 1;
-                y += 1;
-                continue;
-            } else if map.get(&(x, y)) == Some(&b'o') && y == 0 {
-                break 'outer;
+                for x_diff in [0, -1, 1] {
+                    if !map.contains_key(&(x.wrapping_add_signed(x_diff), y)) {
+                        x = x.wrapping_add_signed(x_diff);
+                        continue 'inner;
+                    }
+                }
+                if map.get(&(x, y - 1)) == Some(&b'o') && y == 1 {
+                    break 'outer;
+                }
             }
-            map.insert((x, y), b'o');
+            map.insert((x, y - 1), b'o');
             count += 1;
             break;
         }
