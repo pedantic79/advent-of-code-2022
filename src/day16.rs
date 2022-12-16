@@ -1,70 +1,94 @@
-use ahash::HashMap;
+use ahash::{HashMap, HashMapExt};
 use aoc_runner_derive::{aoc, aoc_generator};
-use bit_set::BitSet;
 use itertools::Itertools;
+use nom::{branch::alt, bytes::complete::tag, multi::separated_list1, sequence::tuple, IResult};
 use std::cmp::Reverse;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Object {
     rate: usize,
-    connections: Vec<String>,
+    connections: Vec<usize>,
+}
+
+fn parse_line(s: &str) -> IResult<&str, (&str, u32, Vec<&str>)> {
+    let (s, (_, name, _, rate, _, connections)) = tuple((
+        tag("Valve "),
+        nom::bytes::complete::take(2usize),
+        tag(" has flow rate="),
+        nom::character::complete::u32,
+        alt((
+            tag("; tunnels lead to valves "),
+            tag("; tunnel leads to valve "),
+        )),
+        separated_list1(tag(", "), nom::bytes::complete::take(2usize)),
+    ))(s)?;
+
+    Ok((s, (name, rate, connections)))
 }
 
 #[aoc_generator(day16)]
-pub fn generator(input: &str) -> HashMap<String, Object> {
-    let mut valves = HashMap::default();
+pub fn generator(input: &str) -> Vec<Object> {
+    let valves = input
+        .lines()
+        .map(|line| parse_line(line).unwrap().1)
+        .map(|(k, v1, v2)| (k, (v1 as usize, v2)))
+        .collect::<HashMap<_, _>>();
+    let mut rev_lookup = Vec::with_capacity(valves.len());
+    let mut lookup = HashMap::with_capacity(valves.len());
+    lookup.insert("AA", 0);
+    rev_lookup.push("AA");
+    let mut idx = 1;
 
-    for line in input.lines() {
-        let mut valve: String = String::new();
-        let mut rate: usize = 0;
-        let mut _connections: String = String::new();
-        if line.contains("tunnels") {
-            scanf::sscanf!(
-                line,
-                "Valve {} has flow rate={}; tunnels lead to valves {}",
-                valve,
-                rate,
-                _connections
-            )
-        } else {
-            scanf::sscanf!(
-                line,
-                "Valve {} has flow rate={}; tunnel leads to valve {}",
-                valve,
-                rate,
-                _connections
-            )
+    for (k, (rate, _)) in valves.iter() {
+        if *rate > 0 {
+            lookup.insert(k, idx);
+            rev_lookup.push(k);
+            idx += 1;
         }
-        .unwrap();
-        let connections = _connections.split(", ").map(|s| s.to_string()).collect();
-        valves.insert(valve, Object { rate, connections });
     }
 
-    valves
+    for (k, (rate, _)) in valves.iter() {
+        if *rate == 0 && *k != "AA" {
+            lookup.insert(k, idx);
+            rev_lookup.push(k);
+            idx += 1;
+        }
+    }
+
+    let mut res = Vec::with_capacity(valves.len());
+    for k in rev_lookup {
+        let connections = valves[k].1.iter().map(|x| lookup[x] as usize).collect();
+        res.push(Object {
+            rate: valves[k].0,
+            connections,
+        })
+    }
+
+    res
 }
 
-fn encode(n: &str) -> usize {
-    let n = n.as_bytes();
-    usize::from(((n[0] - b'A') << 5) | (n[1] - b'A'))
+#[inline]
+fn encode(n: usize) -> usize {
+    (1 << n) as usize
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct State<'a> {
-    open: BitSet,
-    current_room: &'a str,
+struct State {
+    open: usize,
+    current_room: usize,
     flow_per: usize,
     total: usize,
 }
 
-impl<'a> State<'a> {
-    fn next(&self, object: &'a HashMap<String, Object>) -> Vec<Self> {
+impl State {
+    fn next(&self, object: &[Object]) -> Vec<Self> {
         let mut res = vec![];
         let total = self.total + self.flow_per;
 
         // Open Valve:
-        if object[self.current_room].rate > 0 && !self.open.contains(encode(self.current_room)) {
-            let mut open = self.open.clone();
-            open.insert(encode(self.current_room));
+        if object[self.current_room].rate > 0 && !self.open & encode(self.current_room) > 0 {
+            let mut open = self.open;
+            open |= encode(self.current_room);
             res.push(Self {
                 open,
                 total,
@@ -76,9 +100,9 @@ impl<'a> State<'a> {
         // Move
         for next_valve in &object[self.current_room].connections {
             res.push(Self {
-                current_room: next_valve,
+                current_room: *next_valve,
                 total,
-                open: self.open.clone(),
+                open: self.open,
                 flow_per: self.flow_per,
             });
         }
@@ -87,22 +111,22 @@ impl<'a> State<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct ElephantState<'a> {
-    open: BitSet,
-    current_room: &'a str,
-    elephant_room: &'a str,
+struct ElephantState {
+    open: usize,
+    current_room: usize,
+    elephant_room: usize,
     flow_per: usize,
     total: usize,
 }
 
-impl<'a> ElephantState<'a> {
-    fn next(&self, object: &'a HashMap<String, Object>) -> Vec<Self> {
+impl ElephantState {
+    fn next(&self, object: &[Object]) -> Vec<Self> {
         let mut vec_you = vec![];
         let total = self.total + self.flow_per;
 
-        if object[self.current_room].rate > 0 && !self.open.contains(encode(self.current_room)) {
-            let mut open = self.open.clone();
-            open.insert(encode(self.current_room));
+        if object[self.current_room].rate > 0 && !self.open & (encode(self.current_room)) > 0 {
+            let mut open = self.open;
+            open |= encode(self.current_room);
             vec_you.push((
                 Self {
                     open,
@@ -118,8 +142,8 @@ impl<'a> ElephantState<'a> {
         for next_valve in &object[self.current_room].connections {
             vec_you.push((
                 Self {
-                    open: self.open.clone(),
-                    current_room: next_valve,
+                    open: self.open,
+                    current_room: *next_valve,
                     elephant_room: self.elephant_room,
                     flow_per: self.flow_per,
                     total,
@@ -129,9 +153,9 @@ impl<'a> ElephantState<'a> {
         }
 
         let mut vec_elephant = vec![];
-        if object[self.elephant_room].rate > 0 && !self.open.contains(encode(self.elephant_room)) {
-            let mut open = self.open.clone();
-            open.insert(encode(self.elephant_room));
+        if object[self.elephant_room].rate > 0 && !self.open & (encode(self.elephant_room)) > 0 {
+            let mut open = self.open;
+            open |= encode(self.elephant_room);
             vec_elephant.push((
                 Self {
                     open,
@@ -147,9 +171,9 @@ impl<'a> ElephantState<'a> {
         for next_valve in &object[self.elephant_room].connections {
             vec_elephant.push((
                 Self {
-                    open: self.open.clone(),
+                    open: self.open,
                     current_room: self.current_room,
-                    elephant_room: next_valve,
+                    elephant_room: *next_valve,
                     flow_per: self.flow_per,
                     total,
                 },
@@ -163,22 +187,22 @@ impl<'a> ElephantState<'a> {
             .cartesian_product(vec_elephant.into_iter())
         {
             let current_room = you.current_room;
-            let elphant_room = elephant.elephant_room;
+            let elephant_room = elephant.elephant_room;
             if you_opened && elephant_opened {
                 if you.current_room != elephant.elephant_room {
-                    let mut open = you.open.clone();
-                    open.insert(encode(self.elephant_room));
+                    let mut open = you.open;
+                    open |= encode(self.elephant_room);
 
                     res.push(ElephantState {
                         open,
                         current_room,
-                        elephant_room: elphant_room,
+                        elephant_room,
                         flow_per: you.flow_per + object[elephant.elephant_room].rate,
                         total,
                     });
                 }
             } else {
-                let open = if you.open.len() > elephant.open.len() {
+                let open = if you.open.count_ones() > elephant.open.count_ones() {
                     you.open
                 } else {
                     elephant.open
@@ -187,7 +211,7 @@ impl<'a> ElephantState<'a> {
                 res.push(ElephantState {
                     open,
                     current_room,
-                    elephant_room: elphant_room,
+                    elephant_room,
                     flow_per: you.flow_per.max(elephant.flow_per),
                     total,
                 });
@@ -198,10 +222,10 @@ impl<'a> ElephantState<'a> {
 }
 
 #[aoc(day16, part1)]
-pub fn part1(inputs: &HashMap<String, Object>) -> usize {
+pub fn part1(inputs: &[Object]) -> usize {
     let mut state = vec![State {
         open: Default::default(),
-        current_room: "AA",
+        current_room: 0,
         flow_per: 0,
         total: 0,
     }];
@@ -210,8 +234,8 @@ pub fn part1(inputs: &HashMap<String, Object>) -> usize {
             .into_iter()
             .flat_map(|state| state.next(inputs).into_iter())
             .collect();
-        state.sort_by_key(|state| Reverse(state.total));
-        state.truncate(400);
+        state.sort_unstable_by_key(|state| Reverse(state.total));
+        state.truncate(425);
     }
 
     state
@@ -222,11 +246,11 @@ pub fn part1(inputs: &HashMap<String, Object>) -> usize {
 }
 
 #[aoc(day16, part2)]
-pub fn part2(inputs: &HashMap<String, Object>) -> usize {
+pub fn part2(inputs: &[Object]) -> usize {
     let mut state = vec![ElephantState {
         open: Default::default(),
-        current_room: "AA",
-        elephant_room: "AA",
+        current_room: 0,
+        elephant_room: 0,
         flow_per: 0,
         total: 0,
     }];
@@ -235,7 +259,7 @@ pub fn part2(inputs: &HashMap<String, Object>) -> usize {
             .into_iter()
             .flat_map(|state| state.next(inputs).into_iter())
             .collect();
-        state.sort_by_key(|state| Reverse(state.total));
+        state.sort_unstable_by_key(|state| Reverse(state.total));
         state.truncate(3075);
     }
 
