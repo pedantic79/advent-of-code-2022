@@ -1,5 +1,6 @@
-use ahash::{HashMap, HashSet};
+use ahash::HashMap;
 use aoc_runner_derive::{aoc, aoc_generator};
+use bit_set::BitSet;
 use itertools::Itertools;
 use std::cmp::Reverse;
 
@@ -42,9 +43,14 @@ pub fn generator(input: &str) -> HashMap<String, Object> {
     valves
 }
 
+fn encode(n: &str) -> usize {
+    let n = n.as_bytes();
+    usize::from(((n[0] - b'A') << 5) | (n[1] - b'A'))
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct State<'a> {
-    open: HashSet<&'a str>,
+    open: BitSet,
     current_room: &'a str,
     flow_per: usize,
     total: usize,
@@ -56,9 +62,9 @@ impl<'a> State<'a> {
         let total = self.total + self.flow_per;
 
         // Open Valve:
-        if !self.open.contains(self.current_room) && object[self.current_room].rate > 0 {
+        if object[self.current_room].rate > 0 && !self.open.contains(encode(self.current_room)) {
             let mut open = self.open.clone();
-            open.insert(self.current_room);
+            open.insert(encode(self.current_room));
             res.push(Self {
                 open,
                 total,
@@ -82,7 +88,7 @@ impl<'a> State<'a> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct ElephantState<'a> {
-    open: HashSet<&'a str>,
+    open: BitSet,
     current_room: &'a str,
     elephant_room: &'a str,
     flow_per: usize,
@@ -94,10 +100,9 @@ impl<'a> ElephantState<'a> {
         let mut vec_you = vec![];
         let total = self.total + self.flow_per;
 
-        // Open Valve (you):
-        if !self.open.contains(self.current_room) && object[self.current_room].rate > 0 {
+        if object[self.current_room].rate > 0 && !self.open.contains(encode(self.current_room)) {
             let mut open = self.open.clone();
-            open.insert(self.current_room);
+            open.insert(encode(self.current_room));
             vec_you.push((
                 Self {
                     open,
@@ -124,9 +129,9 @@ impl<'a> ElephantState<'a> {
         }
 
         let mut vec_elephant = vec![];
-        if !self.open.contains(self.elephant_room) && object[self.elephant_room].rate > 0 {
+        if object[self.elephant_room].rate > 0 && !self.open.contains(encode(self.elephant_room)) {
             let mut open = self.open.clone();
-            open.insert(self.elephant_room);
+            open.insert(encode(self.elephant_room));
             vec_elephant.push((
                 Self {
                     open,
@@ -162,7 +167,7 @@ impl<'a> ElephantState<'a> {
             if you_opened && elephant_opened {
                 if you.current_room != elephant.elephant_room {
                     let mut open = you.open.clone();
-                    open.insert(self.elephant_room);
+                    open.insert(encode(self.elephant_room));
 
                     res.push(ElephantState {
                         open,
@@ -204,9 +209,9 @@ pub fn part1(inputs: &HashMap<String, Object>) -> usize {
         state = state
             .into_iter()
             .flat_map(|state| state.next(inputs).into_iter())
-            .sorted_by_key(|state| Reverse(state.total))
-            .take(400)
             .collect();
+        state.sort_by_key(|state| Reverse(state.total));
+        state.truncate(400);
     }
 
     state
@@ -229,9 +234,9 @@ pub fn part2(inputs: &HashMap<String, Object>) -> usize {
         state = state
             .into_iter()
             .flat_map(|state| state.next(inputs).into_iter())
-            .sorted_by_key(|state| Reverse(state.total))
-            .take(3075)
             .collect();
+        state.sort_by_key(|state| Reverse(state.total));
+        state.truncate(3075);
     }
 
     state
