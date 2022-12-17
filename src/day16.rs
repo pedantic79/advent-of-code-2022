@@ -39,16 +39,8 @@ pub fn generator(input: &str) -> Vec<Object> {
     rev_lookup.push("AA");
     let mut idx = 1;
 
-    for (k, (rate, _)) in valves.iter() {
-        if *rate > 0 {
-            lookup.insert(k, idx);
-            rev_lookup.push(k);
-            idx += 1;
-        }
-    }
-
-    for (k, (rate, _)) in valves.iter() {
-        if *rate == 0 && *k != "AA" {
+    for k in valves.keys() {
+        if *k != "AA" {
             lookup.insert(k, idx);
             rev_lookup.push(k);
             idx += 1;
@@ -69,7 +61,7 @@ pub fn generator(input: &str) -> Vec<Object> {
 
 #[inline]
 fn encode(n: usize) -> usize {
-    (1 << n) as usize
+    1usize << n
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
