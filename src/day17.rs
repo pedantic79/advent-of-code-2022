@@ -1,65 +1,14 @@
 use std::{collections::hash_map, fmt::Debug};
 
 use ahash::HashMapExt;
-use aoc_runner_derive::{aoc, aoc_generator};
+use aoc_runner_derive::aoc;
 use rustc_hash::FxHashMap as HashMap;
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Direction {
-    Left,
-    Right,
-}
-
-#[aoc_generator(day17)]
-pub fn generator(input: &str) -> Vec<Direction> {
-    input
-        .bytes()
-        .map(|b| {
-            if b == b'<' {
-                Direction::Left
-            } else {
-                Direction::Right
-            }
-        })
-        .collect()
-}
 
 struct Chamber(Vec<u8>);
 
 impl Debug for Chamber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", ChamberView(&self.0))
-    }
-}
-
-fn display(b: u8) -> char {
-    if b > 0 {
-        '#'
-    } else {
-        '.'
-    }
-}
-
-struct ChamberView<'a>(&'a [u8]);
-
-impl<'a> Debug for ChamberView<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f)?;
-        for row in self.0.iter().rev() {
-            writeln!(
-                f,
-                "|{}{}{}{}{}{}{}|",
-                display(row & 1 << 6),
-                display(row & 1 << 5),
-                display(row & 1 << 4),
-                display(row & 1 << 3),
-                display(row & 1 << 2),
-                display(row & 1 << 1),
-                display(row & 1),
-            )?;
-        }
-
-        writeln!(f, "+-------+\n")
     }
 }
 
@@ -76,6 +25,37 @@ impl Chamber {
         for (row, grid_row) in self.0[dy..(dy + 4)].iter_mut().enumerate() {
             *grid_row |= Self::piece2u8(piece, row, dx);
         }
+    }
+}
+
+fn display(b: u8, n: u8) -> char {
+    if b & 1 << n > 0 {
+        '#'
+    } else {
+        '.'
+    }
+}
+
+struct ChamberView<'a>(&'a [u8]);
+
+impl<'a> Debug for ChamberView<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f)?;
+        for &row in self.0.iter().rev() {
+            writeln!(
+                f,
+                "|{}{}{}{}{}{}{}|",
+                display(row, 6),
+                display(row, 5),
+                display(row, 4),
+                display(row, 3),
+                display(row, 2),
+                display(row, 1),
+                display(row, 0),
+            )?;
+        }
+
+        writeln!(f, "+-------+\n")
     }
 }
 
@@ -116,63 +96,22 @@ impl Piece {
 }
 
 #[aoc(day17, part1)]
-pub fn part1(inputs: &[Direction]) -> usize {
-    let mut chamber = Chamber(vec![0; 1024 * 4]);
-    let mut drafts = inputs.iter().cycle();
-    let mut max = 0;
-
-    for (_, &(piece, piece_height, piece_width)) in (0..2022).zip(
-        [
-            Piece::Horizontal.get_info(),
-            Piece::Plus.get_info(),
-            Piece::Corner.get_info(),
-            Piece::Vertical.get_info(),
-            Piece::Square.get_info(),
-        ]
-        .iter()
-        .cycle(),
-    ) {
-        let mut y = max + 3;
-        let mut x = 2;
-        loop {
-            // Move Left/Right
-            let draft = drafts.next().unwrap();
-            match draft {
-                Direction::Left => {
-                    if x > 0 && chamber.check_piece(piece, y, x - 1) {
-                        x -= 1;
-                    }
-                }
-                Direction::Right => {
-                    if x + piece_width < 7 && chamber.check_piece(piece, y, x + 1) {
-                        x += 1
-                    }
-                }
-            }
-
-            // Move Down
-            if y > 0 && chamber.check_piece(piece, y - 1, x) {
-                y -= 1;
-            } else {
-                break;
-            }
-        }
-        chamber.write_piece(piece, y, x);
-        max = max.max(y + piece_height);
-        // println!("{chamber:?}\n");
-    }
-
-    max
+pub fn part1(inputs: &[u8]) -> usize {
+    solve::<2022>(inputs)
 }
 
 #[aoc(day17, part2)]
-pub fn part2(inputs: &[Direction]) -> usize {
+pub fn part2(inputs: &[u8]) -> usize {
+    solve::<1_000_000_000_000>(inputs)
+}
+
+pub fn solve<const MAX_ITERATIONS: usize>(inputs: &[u8]) -> usize {
     let mut chamber = Chamber(vec![0; 1024 * 5]);
     let mut drafts = inputs.iter().enumerate().cycle();
     let mut max = 0;
     let mut seen = HashMap::with_capacity(500);
 
-    for (iteration, (piece_index, &(piece, piece_height, piece_width))) in (1..).zip(
+    for (iteration, (piece_index, &(piece, piece_height, piece_width))) in (0..MAX_ITERATIONS).zip(
         [
             Piece::Horizontal.get_info(),
             Piece::Plus.get_info(),
@@ -190,16 +129,17 @@ pub fn part2(inputs: &[Direction]) -> usize {
             // Move Left/Right
             let (draft_index, draft) = drafts.next().unwrap();
             match draft {
-                Direction::Left => {
+                b'<' => {
                     if x > 0 && chamber.check_piece(piece, y, x - 1) {
                         x -= 1;
                     }
                 }
-                Direction::Right => {
+                b'>' => {
                     if x + piece_width < 7 && chamber.check_piece(piece, y, x + 1) {
                         x += 1
                     }
                 }
+                _ => unreachable!(),
             }
 
             // Move Down
@@ -212,8 +152,8 @@ pub fn part2(inputs: &[Direction]) -> usize {
         chamber.write_piece(piece, y, x);
         max = max.max(y + piece_height);
 
-        const MAX_ITERATIONS: usize = 1_000_000_000_000;
         if piece_index == 4 {
+            let iteration = iteration + 1;
             match seen.entry(draft_index) {
                 hash_map::Entry::Occupied(x) => {
                     let &(i, m) = x.get();
@@ -234,14 +174,19 @@ pub fn part2(inputs: &[Direction]) -> usize {
         // println!("{chamber:?}\n");
     }
 
-    panic!("shouldn't get here")
+    max
 }
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::needless_borrow)]
     use super::*;
 
     const SAMPLE: &str = r">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
+
+    fn generator(s: &str) -> &[u8] {
+        s.as_bytes()
+    }
 
     #[test]
     pub fn test_input() {
