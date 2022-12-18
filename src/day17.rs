@@ -1,7 +1,8 @@
 use std::{collections::hash_map, fmt::Debug};
 
-use ahash::HashMap;
+use ahash::HashMapExt;
 use aoc_runner_derive::{aoc, aoc_generator};
+use rustc_hash::FxHashMap as HashMap;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -169,7 +170,7 @@ pub fn part2(inputs: &[Direction]) -> usize {
     let mut chamber = Chamber(vec![0; 1024 * 5]);
     let mut drafts = inputs.iter().enumerate().cycle();
     let mut max = 0;
-    let mut seen = HashMap::default();
+    let mut seen = HashMap::with_capacity(500);
 
     for (iteration, (piece_index, &(piece, piece_height, piece_width))) in (1..).zip(
         [
@@ -213,7 +214,7 @@ pub fn part2(inputs: &[Direction]) -> usize {
 
         const MAX_ITERATIONS: usize = 1_000_000_000_000;
         if piece_index == 4 {
-            match seen.entry((piece_index, draft_index)) {
+            match seen.entry(draft_index) {
                 hash_map::Entry::Occupied(x) => {
                     let &(i, m) = x.get();
                     let iteration_period = iteration - i;
