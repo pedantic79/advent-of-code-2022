@@ -1,4 +1,4 @@
-use std::collections::BinaryHeap;
+use std::collections::VecDeque;
 
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
@@ -80,20 +80,26 @@ fn weight(geode: i64, geode_robots: i64, time: i64) -> i64 {
 }
 
 fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
+    let max_ore = [bp.ore, bp.clay, bp.obsidian.0, bp.geode.0]
+        .into_iter()
+        .max()
+        .unwrap_or(0);
     let mut seen = HashSet::default();
-    let mut queue = BinaryHeap::new();
+    let mut queue = VecDeque::new();
+    let mut ans = 0;
 
-    queue.push((0, 0, Counts::default()));
+    queue.push_back((0, Counts::default()));
 
-    while let Some((_, minutes, count)) = queue.pop() {
+    while let Some((minutes, count)) = queue.pop_front() {
         if minutes == total_minutes {
-            return count.geode * factor;
+            ans = ans.max(count.geode);
+            continue;
         }
+
         if !seen.insert(count) {
             continue;
         }
 
-        let time = total_minutes - minutes;
         let ore = count.ore + count.ore_robot;
         let clay = count.clay + count.clay_robot;
         let obsidian = count.obsidian + count.obsidian_robot;
@@ -101,8 +107,7 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
         let minutes = minutes + 1;
 
         if count.ore >= bp.geode.0 && count.obsidian >= bp.geode.1 {
-            queue.push((
-                weight(geode + 1, count.geode_robot + 1, time),
+            queue.push_back((
                 minutes,
                 Counts {
                     geode,
@@ -116,11 +121,8 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
             continue;
         }
 
-        let weight = weight(geode, count.geode_robot, time);
-
         if count.ore >= bp.obsidian.0 && count.clay >= bp.obsidian.1 {
-            queue.push((
-                weight,
+            queue.push_back((
                 minutes,
                 Counts {
                     geode,
@@ -134,9 +136,9 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
             continue;
         }
 
-        if count.ore >= bp.ore {
-            queue.push((
-                weight,
+        // Don't make any more ore_robot than the max ore we need
+        if count.ore_robot < max_ore && count.ore >= bp.ore {
+            queue.push_back((
                 minutes,
                 Counts {
                     geode,
@@ -149,9 +151,9 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
             ));
         }
 
-        if count.ore >= bp.clay {
-            queue.push((
-                weight,
+        // Don't make any more clay_robot than the max clay we need
+        if count.clay_robot < bp.obsidian.1 && count.ore >= bp.clay {
+            queue.push_back((
                 minutes,
                 Counts {
                     geode,
@@ -164,9 +166,7 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
             ));
         }
 
-        // Do nothing
-        queue.push((
-            weight,
+        queue.push_back((
             minutes,
             Counts {
                 geode,
@@ -178,7 +178,7 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
         ));
     }
 
-    panic!("shouldn't get here")
+    ans * factor
 }
 
 #[aoc_generator(day19)]
