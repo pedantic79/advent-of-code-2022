@@ -7,15 +7,15 @@ use rayon::prelude::{IndexedParallelIterator, IntoParallelRefIterator, ParallelI
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BluePrint {
-    num: i64,
-    ore: i64,
-    clay: i64,
-    obsidian: (i64, i64),
-    geode: (i64, i64),
+    num: i32,
+    ore: i32,
+    clay: i32,
+    obsidian: (i32, i32),
+    geode: (i32, i32),
 }
 
-fn num(s: &str) -> IResult<&str, i64> {
-    nom::character::complete::i64(s)
+fn num(s: &str) -> IResult<&str, i32> {
+    nom::character::complete::i32(s)
 }
 
 fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {
@@ -48,18 +48,18 @@ fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash)]
-struct Counts {
-    geode: i64,
-    geode_robot: i64,
-    obsidian_robot: i64,
-    clay_robot: i64,
-    ore_robot: i64,
-    ore: i64,
-    clay: i64,
-    obsidian: i64,
+struct State {
+    geode: i32,
+    geode_robot: i32,
+    obsidian_robot: i32,
+    clay_robot: i32,
+    ore_robot: i32,
+    ore: i32,
+    clay: i32,
+    obsidian: i32,
 }
 
-impl Default for Counts {
+impl Default for State {
     fn default() -> Self {
         Self {
             ore_robot: 1,
@@ -74,12 +74,7 @@ impl Default for Counts {
     }
 }
 
-fn weight(geode: i64, geode_robots: i64, time: i64) -> i64 {
-    let time = time - 2;
-    geode + (geode_robots + time) * time
-}
-
-fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
+fn simulate(bp: &BluePrint, total_minutes: i32, factor: i32) -> i32 {
     let aggressive = bp
         != &BluePrint {
             num: 1,
@@ -97,49 +92,49 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
     let mut queue = VecDeque::new();
     let mut ans = 0;
 
-    queue.push_back((0, Counts::default()));
+    queue.push_back((0, State::default()));
 
-    while let Some((minutes, count)) = queue.pop_front() {
+    while let Some((minutes, state)) = queue.pop_front() {
         if minutes == total_minutes {
-            ans = ans.max(count.geode);
+            ans = ans.max(state.geode);
             continue;
         }
 
-        if !seen.insert(count) {
+        if !seen.insert(state) {
             continue;
         }
 
-        let ore = count.ore + count.ore_robot;
-        let clay = count.clay + count.clay_robot;
-        let obsidian = count.obsidian + count.obsidian_robot;
-        let geode = count.geode + count.geode_robot;
+        let ore = state.ore + state.ore_robot;
+        let clay = state.clay + state.clay_robot;
+        let obsidian = state.obsidian + state.obsidian_robot;
+        let geode = state.geode + state.geode_robot;
         let minutes = minutes + 1;
 
-        if count.ore >= bp.geode.0 && count.obsidian >= bp.geode.1 {
+        if state.ore >= bp.geode.0 && state.obsidian >= bp.geode.1 {
             queue.push_back((
                 minutes,
-                Counts {
+                State {
                     geode,
-                    geode_robot: count.geode_robot + 1,
+                    geode_robot: state.geode_robot + 1,
                     ore: ore - bp.geode.0,
                     clay,
                     obsidian: obsidian - bp.geode.1,
-                    ..count
+                    ..state
                 },
             ));
             continue;
         }
 
-        if count.ore >= bp.obsidian.0 && count.clay >= bp.obsidian.1 {
+        if state.ore >= bp.obsidian.0 && state.clay >= bp.obsidian.1 {
             queue.push_back((
                 minutes,
-                Counts {
+                State {
                     geode,
-                    obsidian_robot: count.obsidian_robot + 1,
+                    obsidian_robot: state.obsidian_robot + 1,
                     ore: ore - bp.obsidian.0,
                     clay: clay - bp.obsidian.1,
                     obsidian,
-                    ..count
+                    ..state
                 },
             ));
 
@@ -152,48 +147,48 @@ fn simulate(bp: &BluePrint, total_minutes: i64, factor: i64) -> i64 {
         }
 
         // Don't make any more clay_robot than the max clay we need
-        if count.clay_robot < bp.obsidian.1 && count.ore >= bp.clay {
+        if state.clay_robot < bp.obsidian.1 && state.ore >= bp.clay {
             queue.push_back((
                 minutes,
-                Counts {
+                State {
                     geode,
                     ore: ore - bp.clay,
-                    clay_robot: count.clay_robot + 1,
+                    clay_robot: state.clay_robot + 1,
                     clay,
                     obsidian,
-                    ..count
+                    ..state
                 },
             ));
         }
 
         // When we aren't aggressively pruning then we can skip the rest
-        if !aggressive && count.ore >= bp.obsidian.0 && count.clay >= bp.obsidian.1 {
+        if !aggressive && state.ore >= bp.obsidian.0 && state.clay >= bp.obsidian.1 {
             continue;
         }
 
         // Don't make any more ore_robot than the max ore we need
-        if count.ore_robot < max_ore && count.ore >= bp.ore {
+        if state.ore_robot < max_ore && state.ore >= bp.ore {
             queue.push_back((
                 minutes,
-                Counts {
+                State {
                     geode,
-                    ore_robot: count.ore_robot + 1,
+                    ore_robot: state.ore_robot + 1,
                     ore: ore - bp.ore,
                     clay,
                     obsidian,
-                    ..count
+                    ..state
                 },
             ));
         }
 
         queue.push_back((
             minutes,
-            Counts {
+            State {
                 geode,
                 ore,
                 clay,
                 obsidian,
-                ..count
+                ..state
             },
         ));
     }
@@ -210,13 +205,16 @@ pub fn generator(input: &str) -> Vec<BluePrint> {
 }
 
 #[aoc(day19, part1)]
-pub fn part1(inputs: &[BluePrint]) -> i64 {
-    inputs.par_iter().map(|bp| simulate(bp, 24, bp.num)).sum()
+pub fn part1(blueprints: &[BluePrint]) -> i32 {
+    blueprints
+        .par_iter()
+        .map(|bp| simulate(bp, 24, bp.num))
+        .sum()
 }
 
 #[aoc(day19, part2)]
-pub fn part2(inputs: &[BluePrint]) -> i64 {
-    inputs
+pub fn part2(blueprints: &[BluePrint]) -> i32 {
+    blueprints
         .par_iter()
         .take(3)
         .map(|bp| simulate(bp, 32, 1))
@@ -251,7 +249,7 @@ Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsid
         use super::*;
 
         const INPUT: &str = include_str!("../input/2022/day19.txt");
-        const ANSWERS: (i64, i64) = (1264, 13475);
+        const ANSWERS: (i32, i32) = (1264, 13475);
 
         #[test]
         pub fn test() {
