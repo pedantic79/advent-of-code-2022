@@ -7,15 +7,15 @@ use rayon::prelude::{IndexedParallelIterator, IntoParallelRefIterator, ParallelI
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BluePrint {
-    num: i32,
-    ore: i32,
-    clay: i32,
-    obsidian: (i32, i32),
-    geode: (i32, i32),
+    num: u16,
+    ore: u16,
+    clay: u16,
+    obsidian: (u16, u16),
+    geode: (u16, u16),
 }
 
-fn num(s: &str) -> IResult<&str, i32> {
-    nom::character::complete::i32(s)
+fn num(s: &str) -> IResult<&str, u16> {
+    nom::character::complete::u16(s)
 }
 
 fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {
@@ -49,14 +49,14 @@ fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash)]
 struct State {
-    geode: i32,
-    geode_robot: i32,
-    obsidian_robot: i32,
-    clay_robot: i32,
-    ore_robot: i32,
-    ore: i32,
-    clay: i32,
-    obsidian: i32,
+    geode: u16,
+    geode_robot: u16,
+    obsidian_robot: u16,
+    clay_robot: u16,
+    ore_robot: u16,
+    ore: u16,
+    clay: u16,
+    obsidian: u16,
 }
 
 impl Default for State {
@@ -74,7 +74,7 @@ impl Default for State {
     }
 }
 
-fn simulate(bp: &BluePrint, total_minutes: i32, factor: i32) -> i32 {
+fn simulate(bp: &BluePrint, total_minutes: u16, factor: u16) -> u16 {
     let aggressive = bp
         != &BluePrint {
             num: 1,
@@ -205,7 +205,7 @@ pub fn generator(input: &str) -> Vec<BluePrint> {
 }
 
 #[aoc(day19, part1)]
-pub fn part1(blueprints: &[BluePrint]) -> i32 {
+pub fn part1(blueprints: &[BluePrint]) -> u16 {
     blueprints
         .par_iter()
         .map(|bp| simulate(bp, 24, bp.num))
@@ -213,7 +213,7 @@ pub fn part1(blueprints: &[BluePrint]) -> i32 {
 }
 
 #[aoc(day19, part2)]
-pub fn part2(blueprints: &[BluePrint]) -> i32 {
+pub fn part2(blueprints: &[BluePrint]) -> u16 {
     blueprints
         .par_iter()
         .take(3)
@@ -249,7 +249,7 @@ Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsid
         use super::*;
 
         const INPUT: &str = include_str!("../input/2022/day19.txt");
-        const ANSWERS: (i32, i32) = (1264, 13475);
+        const ANSWERS: (u16, u16) = (1264, 13475);
 
         #[test]
         pub fn test() {
