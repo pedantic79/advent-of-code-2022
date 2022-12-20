@@ -24,58 +24,21 @@ pub fn generator(input: &str) -> Vec<Node> {
         .collect()
 }
 
-#[aoc(day20, part1)]
-pub fn part1(inputs: &[Node]) -> isize {
+fn solve<const ITERATIONS: usize>(inputs: &[Node]) -> isize {
     let mut data = inputs.to_vec();
 
-    for &node in inputs.iter() {
-        let idx = data.iter().position(|&x| x == node).unwrap();
-        data.remove(idx);
-
-        let idx = ((idx as isize) + node.val).rem_euclid(data.len() as isize) as usize;
-        if idx == 0 {
-            data.push(node);
-        } else {
-            data.insert(idx, node);
-        };
-
-        // println!("moving {} to {idx}:{data:?}", node.val);
-    }
-
-    let zero_idx = data.iter().position(|x| x.val == 0).unwrap();
-
-    let mut total = 0;
-    for i in [1000, 2000, 3000] {
-        let idx = (zero_idx + i) % data.len();
-        total += data[idx].val;
-    }
-
-    total
-}
-
-#[aoc(day20, part2)]
-pub fn part2(inputs: &[Node]) -> isize {
-    let mut data = inputs
-        .iter()
-        .map(|x| Node {
-            val: x.val * 811589153,
-            pos: x.pos,
-        })
-        .collect::<Vec<_>>();
-    let inputs = data.clone();
-
-    for _ in 0..10 {
+    for _ in 0..ITERATIONS {
         for &node in inputs.iter() {
             let idx = data.iter().position(|&x| x == node).unwrap();
             data.remove(idx);
 
             let idx = ((idx as isize) + node.val).rem_euclid(data.len() as isize) as usize;
-
             if idx == 0 {
                 data.push(node);
             } else {
                 data.insert(idx, node);
             };
+
             // println!("moving {} to {idx}:{data:?}", node.val);
         }
     }
@@ -89,6 +52,24 @@ pub fn part2(inputs: &[Node]) -> isize {
     }
 
     total
+}
+
+#[aoc(day20, part1)]
+pub fn part1(inputs: &[Node]) -> isize {
+    solve::<1>(inputs)
+}
+
+#[aoc(day20, part2)]
+pub fn part2(inputs: &[Node]) -> isize {
+    let data = inputs
+        .iter()
+        .map(|x| Node {
+            val: x.val * 811589153,
+            pos: x.pos,
+        })
+        .collect::<Vec<_>>();
+
+    solve::<10>(&data)
 }
 
 #[cfg(test)]
