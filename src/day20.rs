@@ -2,7 +2,7 @@ use aoc_runner_derive::{aoc, aoc_generator};
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Node {
-    val: isize,
+    val: i64,
     pos: usize,
 }
 
@@ -24,22 +24,25 @@ pub fn generator(input: &str) -> Vec<Node> {
         .collect()
 }
 
-fn solve<const ITERATIONS: usize>(inputs: &[Node]) -> isize {
+fn solve<const ITERATIONS: usize>(inputs: &[Node]) -> i64 {
     let mut data = inputs.to_vec();
 
     for _ in 0..ITERATIONS {
         for &node in inputs.iter() {
-            let idx = data.iter().position(|&x| x == node).unwrap();
-            data.remove(idx);
+            let pos = data.iter().position(|&x| x == node).unwrap();
+            let idx = ((pos as i64) + node.val).rem_euclid((data.len() - 1) as i64) as usize;
 
-            let idx = ((idx as isize) + node.val).rem_euclid(data.len() as isize) as usize;
-            if idx == 0 {
-                data.push(node);
-            } else {
-                data.insert(idx, node);
-            };
+            if idx != pos {
+                data.remove(pos);
 
-            // println!("moving {} to {idx}:{data:?}", node.val);
+                if idx == 0 {
+                    data.push(node);
+                } else {
+                    data.insert(idx, node);
+                };
+
+                // println!("moving {} to {idx}:{data:?}", node.val);
+            }
         }
     }
 
@@ -55,12 +58,12 @@ fn solve<const ITERATIONS: usize>(inputs: &[Node]) -> isize {
 }
 
 #[aoc(day20, part1)]
-pub fn part1(inputs: &[Node]) -> isize {
+pub fn part1(inputs: &[Node]) -> i64 {
     solve::<1>(inputs)
 }
 
 #[aoc(day20, part2)]
-pub fn part2(inputs: &[Node]) -> isize {
+pub fn part2(inputs: &[Node]) -> i64 {
     let data = inputs
         .iter()
         .map(|x| Node {
@@ -105,7 +108,7 @@ mod tests {
         use super::*;
 
         const INPUT: &str = include_str!("../input/2022/day20.txt");
-        const ANSWERS: (isize, isize) = (7153, 6146976244822);
+        const ANSWERS: (i64, i64) = (7153, 6146976244822);
 
         #[test]
         pub fn test() {
