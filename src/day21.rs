@@ -10,6 +10,23 @@ pub enum Operation {
     Sub(String, String),
 }
 
+impl Operation {
+    fn get_arguments(&self) -> (&str, &str) {
+        match self {
+            Operation::Value(_) => todo!(),
+            Operation::Add(l, r) => (l, r),
+            Operation::Mul(l, r) => (l, r),
+            Operation::Div(l, r) => (l, r),
+            Operation::Sub(l, r) => (l, r),
+        }
+    }
+}
+
+enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
+
 fn parse_line(s: &str) -> (String, Operation) {
     let (name, op) = s.split_once(": ").unwrap();
 
@@ -57,39 +74,34 @@ fn get(name: &str, data: &HashMap<String, Operation>) -> Option<i64> {
 }
 
 fn get_either<'a>(
-    a: &'a str,
-    b: &'a str,
+    (l, r): (&'a str, &'a str),
     data: &HashMap<String, Operation>,
-) -> Result<(i64, &'a str), (i64, &'a str)> {
-    get(a, data)
-        .map(|x| (x, b))
-        .ok_or_else(|| get(b, data).map(|x| (x, a)).unwrap())
+) -> Either<(i64, &'a str), (i64, &'a str)> {
+    if let Some(v) = get(l, data).map(|x| (x, r)) {
+        Either::Left(v)
+    } else if let Some(v) = get(r, data).map(|x| (x, l)) {
+        Either::Right(v)
+    } else {
+        panic!("both sides are none found")
+    }
 }
 
 fn solve_p2(name: &str, data: &HashMap<String, Operation>, target: i64) -> i64 {
     if name == "humn" {
         target
     } else {
-        let x = match &data[name] {
-            Operation::Value(_) => todo!(),
-            Operation::Add(a, b) => get_either(a, b, data),
-            Operation::Mul(a, b) => get_either(a, b, data),
-            Operation::Div(a, b) => get_either(a, b, data),
-            Operation::Sub(a, b) => get_either(a, b, data),
-        };
-
-        match x {
-            Ok((x, b)) => {
+        match get_either(data[name].get_arguments(), data) {
+            Either::Left((x, r)) => {
                 let new_target = match &data[name] {
                     Operation::Value(_) => todo!(),
                     Operation::Add(_, _) => target - x,
                     Operation::Mul(_, _) => target / x,
-                    Operation::Div(_, _) => x * target,
+                    Operation::Div(_, _) => target * x,
                     Operation::Sub(_, _) => x - target,
                 };
-                solve_p2(b, data, new_target)
+                solve_p2(r, data, new_target)
             }
-            Err((x, a)) => {
+            Either::Right((x, l)) => {
                 let new_target = match &data[name] {
                     Operation::Value(_) => todo!(),
                     Operation::Add(_, _) => target - x,
@@ -97,7 +109,7 @@ fn solve_p2(name: &str, data: &HashMap<String, Operation>, target: i64) -> i64 {
                     Operation::Div(_, _) => target * x,
                     Operation::Sub(_, _) => target + x,
                 };
-                solve_p2(a, data, new_target)
+                solve_p2(l, data, new_target)
             }
         }
     }
