@@ -42,65 +42,97 @@ fn solve(name: &str, data: &HashMap<String, Operation>) -> i64 {
     }
 }
 
+fn get(name: &str, data: &HashMap<String, Operation>) -> Option<i64> {
+    if name == "humn" {
+        None
+    } else {
+        Some(match &data[name] {
+            Operation::Value(x) => *x,
+            Operation::Add(a, b) => get(a, data)? + get(b, data)?,
+            Operation::Mul(a, b) => get(a, data)? * get(b, data)?,
+            Operation::Div(a, b) => get(a, data)? / get(b, data)?,
+            Operation::Sub(a, b) => get(a, data)? - get(b, data)?,
+        })
+    }
+}
+
+fn get_either<'a>(
+    a: &'a str,
+    b: &'a str,
+    data: &HashMap<String, Operation>,
+) -> Result<(i64, &'a str), (i64, &'a str)> {
+    get(a, data)
+        .map(|x| (x, b))
+        .ok_or_else(|| get(b, data).map(|x| (x, a)).unwrap())
+}
+
+fn solve_p2(name: &str, data: &HashMap<String, Operation>, target: i64) -> i64 {
+    if name == "humn" {
+        target
+    } else {
+        let x = match &data[name] {
+            Operation::Value(_) => todo!(),
+            Operation::Add(a, b) => get_either(a, b, data),
+            Operation::Mul(a, b) => get_either(a, b, data),
+            Operation::Div(a, b) => get_either(a, b, data),
+            Operation::Sub(a, b) => get_either(a, b, data),
+        };
+
+        match x {
+            Ok((x, b)) => {
+                let new_target = match &data[name] {
+                    Operation::Value(_) => todo!(),
+                    Operation::Add(_, _) => target - x,
+                    Operation::Mul(_, _) => target / x,
+                    Operation::Div(_, _) => x * target,
+                    Operation::Sub(_, _) => x - target,
+                };
+                solve_p2(b, data, new_target)
+            }
+            Err((x, a)) => {
+                let new_target = match &data[name] {
+                    Operation::Value(_) => todo!(),
+                    Operation::Add(_, _) => target - x,
+                    Operation::Mul(_, _) => target / x,
+                    Operation::Div(_, _) => target * x,
+                    Operation::Sub(_, _) => target + x,
+                };
+                solve_p2(a, data, new_target)
+            }
+        }
+    }
+}
+
 #[aoc_generator(day21)]
 pub fn generator(input: &str) -> HashMap<String, Operation> {
     input.lines().map(parse_line).collect()
 }
 
 #[aoc(day21, part1)]
-pub fn part1(inputs: &HashMap<String, Operation>) -> i64 {
-    solve("root", inputs)
+pub fn part1(data: &HashMap<String, Operation>) -> i64 {
+    solve("root", data)
 }
 
 #[aoc(day21, part2)]
-pub fn part2(inputs: &HashMap<String, Operation>) -> i64 {
-    let (a, b) = match &inputs["root"] {
+pub fn part2(data: &HashMap<String, Operation>) -> i64 {
+    let (a, b) = match &data["root"] {
         Operation::Add(a, b) => (a, b),
         Operation::Mul(a, b) => (a, b),
         Operation::Div(a, b) => (a, b),
         Operation::Sub(a, b) => (a, b),
-        _ => panic!("bad type"),
+        _ => panic!("invalid root"),
     };
 
-    let mut human = inputs
-        .iter()
-        .map(|(x, y)| (x.to_owned(), y.to_owned()))
-        .collect::<HashMap<_, _>>();
+    // let mut data = data.clone();
+    // data.insert("humn".to_owned(), Operation::Value(6915836165295));
+    // println!("\na: {}", solve(a, &data));
+    // println!("b: {}", solve(b, &data));
 
-    let mut lower = 100;
-    let mut upper = 10_000_000_000_000;
-    let mut last = 0;
-
-    'outer: loop {
-        let step = (upper - lower) / 1000;
-        println!("{lower}..{upper}.step_by({step})");
-        for x in (lower..upper).step_by(step as usize) {
-            human.insert("humn".to_string(), Operation::Value(x));
-            let x1 = solve(a, &human);
-            let x2 = solve(b, &human);
-
-            if x1 == x2 {
-                break 'outer;
-            } else if x2 - x1 > 0 && last < 0 {
-                lower = x - step;
-                upper = x;
-                break;
-            } else {
-                last = x2 - x1;
-            }
-        }
+    match (get(a, data), get(b, data)) {
+        (Some(x), None) => solve_p2(b, data, x),
+        (None, Some(y)) => solve_p2(a, data, y),
+        _ => panic!("both operations have humn"),
     }
-
-    for x in lower..upper {
-        human.insert("humn".to_string(), Operation::Value(x));
-        let x1 = solve(a, &human);
-        let x2 = solve(b, &human);
-        if x1 == x2 {
-            return x;
-        }
-    }
-
-    todo!()
 }
 
 #[cfg(test)]
@@ -137,7 +169,7 @@ hmdt: 32";
 
     #[test]
     pub fn test2() {
-        // assert_eq!(part2(&generator(SAMPLE)), 301);
+        assert_eq!(part2(&generator(SAMPLE)), 301);
     }
 
     mod regression {
