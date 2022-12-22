@@ -1,3 +1,6 @@
+mod part1;
+mod part2;
+
 use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
     branch::alt,
@@ -32,43 +35,22 @@ impl Dir {
         }
     }
 
-    fn from_value(n: usize) -> Self {
+    fn increment(&self, n: usize) -> Self {
+        let n = (self.value() + n) % 4;
         match n % 4 {
             0 => Dir::Right,
             1 => Dir::Down,
             2 => Dir::Left,
             3 => Dir::Up,
-            _ => panic!("not %4"),
-        }
-    }
-
-    fn forward_one(&self, (y, x): (usize, usize), y_max: usize, x_max: usize) -> (usize, usize) {
-        match self {
-            Dir::Left if x > 1 => (y, x - 1),
-            Dir::Left => (y, x_max),
-            Dir::Right if x < x_max => (y, x + 1),
-            Dir::Right => (y, 0),
-            Dir::Up if y > 1 => (y - 1, x),
-            Dir::Up => (y_max, x),
-            Dir::Down if y < y_max => (y + 1, x),
-            Dir::Down => (0, x),
-        }
-    }
-
-    fn forward_one_signed(&self, (y, x): (isize, isize)) -> (isize, isize) {
-        match self {
-            Dir::Left => (y, x - 1),
-            Dir::Right => (y, x + 1),
-            Dir::Up => (y - 1, x),
-            Dir::Down => (y + 1, x),
+            _ => unreachable!(),
         }
     }
 
     fn turn(&self, m: &Moves) -> Self {
         match m {
             Moves::Forward(_) => panic!("can't turn a Forward"),
-            Moves::Right => Self::from_value((self.value() + 1) % 4),
-            Moves::Left => Self::from_value((self.value() + 3) % 4),
+            Moves::Right => self.increment(1),
+            Moves::Left => self.increment(3),
         }
     }
 }
@@ -94,132 +76,6 @@ impl Input {
             Some(*cell)
         }
     }
-
-    fn part1_warp(&self, direction: &Dir, mut pos: (usize, usize)) -> (usize, usize) {
-        loop {
-            pos = direction.forward_one(pos, self.board.len(), self.board[0].len());
-            if self.board_get(pos).is_some() {
-                break pos;
-            }
-        }
-    }
-
-    fn move_forward1(&self, direction: Dir, n: u32, mut pos: (usize, usize)) -> (usize, usize) {
-        for _ in 0..n {
-            let new_pos = direction.forward_one(pos, self.board.len(), self.board[0].len());
-            match self.board_get(new_pos) {
-                Some(b'#') => {
-                    break;
-                }
-                Some(_) => {
-                    pos = new_pos;
-                }
-                None => {
-                    pos = self.part1_warp(&direction, new_pos);
-                    continue;
-                }
-            }
-        }
-
-        pos
-    }
-
-    fn move_forward2(
-        &self,
-        direction: &mut Dir,
-        n: u32,
-        mut pos: (isize, isize),
-    ) -> (isize, isize) {
-        for _ in 0..n {
-            let new_pos = direction.forward_one_signed(pos);
-            let mut new_direction = *direction;
-
-            let new_pos = match direction {
-                Dir::Up | Dir::Down => wrap_y(&mut new_direction, new_pos),
-                Dir::Left | Dir::Right => wrap_x(&mut new_direction, new_pos),
-            };
-
-            match self.board_get(to_usize(new_pos)) {
-                Some(b'#') | None => {}
-                Some(_) => {
-                    pos = new_pos;
-                    *direction = new_direction;
-                }
-            }
-        }
-
-        pos
-    }
-}
-
-fn wrap_y(direction: &mut Dir, (y, x): (isize, isize)) -> (isize, isize) {
-    match x {
-        0..=49 if y < 100 => {
-            *direction = Dir::from_value(direction.value() + 1);
-            (x + 50, 50)
-        }
-        0..=49 if y >= 200 => (0, x + 100),
-        50..=99 if y < 0 => {
-            *direction = Dir::from_value(direction.value() + 1);
-            (x + 100, 0)
-        }
-        50..=99 if y > 150 => {
-            *direction = Dir::from_value(direction.value() + 1);
-            (x + 100, 49)
-        }
-        100..=149 if y < 0 => (199, x - 100),
-        100..=149 if y >= 50 => {
-            *direction = Dir::from_value(direction.value() + 1);
-            (x - 50, 99)
-        }
-        _ => (y, x),
-    }
-}
-
-fn wrap_x(direction: &mut Dir, (y, x): (isize, isize)) -> (isize, isize) {
-    match y {
-        0..=49 if x >= 150 => {
-            *direction = Dir::from_value(direction.value() + 2);
-            (149 - y, 99)
-        }
-        0..=49 if x < 50 => {
-            *direction = Dir::from_value(direction.value() + 2);
-            (149 - y, 0)
-        }
-        50..=99 if x >= 100 => {
-            *direction = Dir::from_value(direction.value() + 3);
-            (49, y + 50)
-        }
-        50..=99 if x < 50 => {
-            *direction = Dir::from_value(direction.value() + 3);
-            (100, y - 50)
-        }
-        100..=149 if x >= 100 => {
-            *direction = Dir::from_value(direction.value() + 2);
-            (149 - y, 149)
-        }
-        100..=149 if x < 0 => {
-            *direction = Dir::from_value(direction.value() + 2);
-            (149 - y, 50)
-        }
-        150..=199 if x < 0 => {
-            *direction = Dir::from_value(direction.value() + 3);
-            (0, y - 100)
-        }
-        150..=199 if x >= 50 => {
-            *direction = Dir::from_value(direction.value() + 3);
-            (149, y - 100)
-        }
-        _ => (y, x),
-    }
-}
-
-fn to_usize((x, y): (isize, isize)) -> (usize, usize) {
-    (x as usize, y as usize)
-}
-
-fn to_isize((x, y): (usize, usize)) -> (isize, isize) {
-    (x as isize, y as isize)
 }
 
 fn parse_moves(line: &str) -> IResult<&str, Vec<Moves>> {
@@ -240,8 +96,10 @@ pub fn generator(input: &str) -> Input {
     Input { mv, board }
 }
 
-#[aoc(day22, part1)]
-pub fn part1(inputs: &Input) -> usize {
+fn solve<F: Fn(&Input, &mut Dir, u32, (usize, usize)) -> (usize, usize)>(
+    inputs: &Input,
+    move_forward: F,
+) -> usize {
     let mut pos = inputs.find_start();
     let mut direction = Dir::Right;
     // println!("start: {pos:?}");
@@ -249,7 +107,7 @@ pub fn part1(inputs: &Input) -> usize {
     for m in &inputs.mv {
         match m {
             Moves::Forward(n) => {
-                pos = inputs.move_forward1(direction, *n, pos);
+                pos = move_forward(inputs, &mut direction, *n, pos);
                 // println!("move foward {n}, new: {pos:?}");
             }
             Moves::Right => {
@@ -266,31 +124,14 @@ pub fn part1(inputs: &Input) -> usize {
     (pos.0 + 1) * 1000 + (pos.1 + 1) * 4 + direction.value()
 }
 
+#[aoc(day22, part1)]
+pub fn part1(inputs: &Input) -> usize {
+    solve(inputs, part1::move_forward)
+}
+
 #[aoc(day22, part2)]
 pub fn part2(inputs: &Input) -> usize {
-    let mut pos = to_isize(inputs.find_start());
-    let mut direction = Dir::Right;
-    // println!("start: {pos:?}");
-
-    for m in &inputs.mv {
-        match m {
-            Moves::Forward(n) => {
-                pos = inputs.move_forward2(&mut direction, *n, pos);
-                // println!("move foward {n}, new: {pos:?}");
-            }
-            Moves::Right => {
-                direction = direction.turn(&Moves::Right);
-                // println!("turn right: Now {direction:?}")
-            }
-            Moves::Left => {
-                direction = direction.turn(&Moves::Left);
-                // println!("turn left: Now {direction:?}")
-            }
-        }
-    }
-
-    let pos = to_usize(pos);
-    (pos.0 + 1) * 1000 + (pos.1 + 1) * 4 + direction.value()
+    solve(inputs, part2::move_forward)
 }
 
 #[cfg(test)]
@@ -327,7 +168,7 @@ mod tests {
             let input = INPUT.trim_end_matches('\n');
             let output = generator(input);
 
-            // assert_eq!(part1(&output), ANSWERS.0);
+            assert_eq!(part1(&output), ANSWERS.0);
             assert_eq!(part2(&output), ANSWERS.1);
         }
     }
