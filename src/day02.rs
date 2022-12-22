@@ -1,17 +1,26 @@
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{
+    bytes::complete::{tag, take},
+    combinator::map,
+    multi::separated_list1,
+    sequence::tuple,
+};
 
 #[aoc_generator(day2)]
-pub fn generator(input: &str) -> Vec<(usize, usize)> {
-    input
-        .lines()
-        .map(|line| {
-            let (a, b) = line.split_once(' ').unwrap();
-            (
-                usize::from(a.as_bytes()[0] - b'A') + 1,
-                usize::from(b.as_bytes()[0] - b'X') + 1,
-            )
-        })
-        .collect()
+pub fn generator(input: &[u8]) -> Vec<(usize, usize)> {
+    separated_list1(
+        tag::<_, _, ()>("\n"),
+        map(
+            tuple((
+                map(take(1usize), |x: &[u8]| usize::from(x[0] - b'A') + 1),
+                tag(" "),
+                map(take(1usize), |x: &[u8]| usize::from(x[0] - b'X') + 1),
+            )),
+            |(l, _, r)| (l, r),
+        ),
+    )(input)
+    .unwrap()
+    .1
 }
 
 #[aoc(day2, part1)]
@@ -34,7 +43,7 @@ pub fn part2(inputs: &[(usize, usize)]) -> usize {
 mod tests {
     use super::*;
 
-    const SAMPLE: &str = r"A Y
+    const SAMPLE: &[u8] = br"A Y
 B X
 C Z";
 
@@ -66,7 +75,7 @@ C Z";
 
         #[test]
         pub fn test() {
-            let input = INPUT.trim_end_matches('\n');
+            let input = INPUT.trim_end_matches('\n').as_bytes();
             let output = generator(input);
 
             assert_eq!(part1(&output), ANSWERS.0);
