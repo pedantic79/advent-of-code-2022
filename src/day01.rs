@@ -1,25 +1,39 @@
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{
+    bytes::complete::tag,
+    character::complete,
+    combinator::opt,
+    multi::{fold_many1, separated_list1},
+    sequence::terminated,
+    IResult,
+};
+
+fn parse_num(s: &str) -> IResult<&str, u32> {
+    terminated(complete::u32, opt(tag("\n")))(s)
+}
 
 #[aoc_generator(day01)]
-pub fn generator(input: &str) -> Vec<usize> {
-    input
-        .split("\n\n")
-        .map(|elf| elf.lines().map(|x| x.parse::<usize>().unwrap()).sum())
-        .collect()
+pub fn generator(input: &str) -> Vec<u32> {
+    separated_list1(
+        tag("\n"),
+        fold_many1(parse_num, || 0, |acc: u32, n| acc + n),
+    )(input)
+    .unwrap()
+    .1
 }
 
 #[aoc(day01, part1, heap)]
-pub fn part1(inputs: &[usize]) -> usize {
+pub fn part1(inputs: &[u32]) -> u32 {
     solve::<1>(inputs)
 }
 
 #[aoc(day01, part2, heap)]
-pub fn part2(inputs: &[usize]) -> usize {
+pub fn part2(inputs: &[u32]) -> u32 {
     solve::<3>(inputs)
 }
 
 #[inline]
-fn solve<const N: usize>(inputs: &[usize]) -> usize {
+fn solve<const N: usize>(inputs: &[u32]) -> u32 {
     inputs
         .iter()
         .copied()
@@ -51,7 +65,7 @@ mod tests {
     pub fn test_input() {
         println!("{:?}", generator(SAMPLE));
 
-        // assert_eq!(generator(SAMPLE), Object());
+        assert_eq!(generator(SAMPLE), &[6000, 4000, 11000, 24000, 10000]);
     }
 
     #[test]
@@ -68,7 +82,7 @@ mod tests {
         use super::*;
 
         const INPUT: &str = include_str!("../input/2022/day1.txt");
-        const ANSWERS: (usize, usize) = (74198, 209914);
+        const ANSWERS: (u32, u32) = (74198, 209914);
 
         #[test]
         pub fn test() {
