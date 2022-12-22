@@ -1,5 +1,13 @@
 use ahash::HashMap;
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take},
+    character::complete::{self, one_of},
+    combinator::map,
+    sequence::tuple,
+    IResult,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Operation {
@@ -27,26 +35,33 @@ enum Either<L, R> {
     Right(R),
 }
 
+fn parse_name(s: &str) -> IResult<&str, String> {
+    map(take(4_usize), |x: &str| x.to_string())(s)
+}
+
+fn parse_op(s: &str) -> IResult<&str, Operation> {
+    alt((
+        map(complete::i64, Operation::Value),
+        map(
+            tuple((parse_name, tag(" "), one_of("+*/-"), tag(" "), parse_name)),
+            |(l, _, op, _, r)| match op {
+                '*' => Operation::Mul(l, r),
+                '+' => Operation::Add(l, r),
+                '/' => Operation::Div(l, r),
+                '-' => Operation::Sub(l, r),
+                _ => panic!("Unknown operation"),
+            },
+        ),
+    ))(s)
+}
+
 fn parse_line(s: &str) -> (String, Operation) {
-    let (name, op) = s.split_once(": ").unwrap();
-
-    let operation = if op.as_bytes()[0].is_ascii_digit() {
-        Operation::Value(op.parse::<i64>().unwrap())
-    } else {
-        let l = op.split_once(&['*', '+', '/', '-'][..]).unwrap();
-        let x = l.0.trim().to_string();
-        let y = l.1.trim().to_string();
-
-        match op.as_bytes()[5] {
-            b'*' => Operation::Mul(x, y),
-            b'+' => Operation::Add(x, y),
-            b'/' => Operation::Div(x, y),
-            b'-' => Operation::Sub(x, y),
-            _ => panic!("Unknown operation"),
-        }
-    };
-
-    (name.to_string(), operation)
+    map(
+        tuple((parse_name, tag(": "), parse_op)),
+        |(name, _, operation)| (name, operation),
+    )(s)
+    .unwrap()
+    .1
 }
 
 fn solve(name: &str, data: &HashMap<String, Operation>) -> i64 {
