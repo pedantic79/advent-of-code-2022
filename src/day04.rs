@@ -1,6 +1,8 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-
-use crate::common::utils::parse_split_n;
+use nom::{
+    bytes::complete::tag, character::complete, combinator::map, multi::separated_list1,
+    sequence::tuple,
+};
 
 type Range = (u32, u32);
 
@@ -12,14 +14,26 @@ pub struct Assignments {
 
 #[aoc_generator(day4)]
 pub fn generator(input: &str) -> Vec<Assignments> {
-    input
-        .lines()
-        .map(|line| {
-            let [a, b, x, y] = parse_split_n(line, &[',', '-'][..]).unwrap();
-            let (one, two) = ((a, b), (x, y));
-            Assignments { one, two }
-        })
-        .collect()
+    separated_list1(
+        tag("\n"),
+        map(
+            tuple((
+                complete::u32::<&str, ()>,
+                tag("-"),
+                complete::u32,
+                tag(","),
+                complete::u32,
+                tag("-"),
+                complete::u32,
+            )),
+            |(a, _, b, _, x, _, y)| {
+                let (one, two) = ((a, b), (x, y));
+                Assignments { one, two }
+            },
+        ),
+    )(input)
+    .unwrap()
+    .1
 }
 
 fn overlap1(a: Range, b: Range) -> bool {
