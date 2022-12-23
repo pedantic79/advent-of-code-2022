@@ -1,3 +1,4 @@
+use ahash::HashMapExt;
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
@@ -72,21 +73,35 @@ pub fn generator(input: &str) -> HashSet<Elf> {
         .collect()
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Solo<T> {
+    None,
+    One(T),
+    Many,
+}
+
+impl<T> Solo<T> {
+    fn push(&mut self, val: T) {
+        *self = match self {
+            Solo::None => Self::One(val),
+            _ => Solo::Many,
+        }
+    }
+}
+
 fn solve<const ROUNDS: usize, N>(
     inputs: &HashSet<Elf>,
     ret: impl Fn(usize, &HashSet<Elf>) -> N,
 ) -> N {
     let mut a = inputs.clone();
-    let mut new_moves = HashMap::default();
 
     for round in 0..ROUNDS {
+        let mut new_moves = HashMap::with_capacity(inputs.len());
         let mut count = 0;
         for elf in a.iter() {
             if let Some(new_elf) = elf.tick(&a, round) {
-                new_moves
-                    .entry(new_elf)
-                    .or_insert_with(|| Vec::with_capacity(4))
-                    .push(*elf);
+                new_moves.entry(new_elf).or_insert(Solo::None).push(*elf);
+
                 count += 1;
             }
         }
@@ -95,13 +110,11 @@ fn solve<const ROUNDS: usize, N>(
             return ret(round, &a);
         }
 
-        for (new_pos, old_pos) in new_moves.iter_mut() {
-            if old_pos.len() == 1 {
-                a.remove(old_pos.first().unwrap());
-                a.insert(*new_pos);
+        for (new_pos, old_pos) in new_moves {
+            if let Solo::One(old_pos) = old_pos {
+                a.remove(&old_pos);
+                a.insert(new_pos);
             }
-
-            old_pos.clear();
         }
     }
 
