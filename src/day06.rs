@@ -11,8 +11,7 @@ fn unique(s: &[u8]) -> Result<(), usize> {
     Ok(())
 }
 
-fn solve<const N: usize>(input: &str) -> usize {
-    let input = input.as_bytes();
+fn solve<const N: usize>(input: &[u8]) -> usize {
     let mut pos = 0;
 
     loop {
@@ -26,12 +25,12 @@ fn solve<const N: usize>(input: &str) -> usize {
 }
 
 #[aoc(day6, part1)]
-pub fn part1(input: &str) -> usize {
+pub fn part1(input: &[u8]) -> usize {
     solve::<4>(input)
 }
 
 #[aoc(day6, part2)]
-pub fn part2(input: &str) -> usize {
+pub fn part2(input: &[u8]) -> usize {
     solve::<14>(input)
 }
 
@@ -39,12 +38,12 @@ pub fn part2(input: &str) -> usize {
 mod tests {
     use super::*;
 
-    const SAMPLE: [&str; 5] = [
-        "mjqjpqmgbljsphdztnvjfqwrcgsmlb",
-        "bvwbjplbgvbhsrlpgdmjqwftvncz",
-        "nppdvjthqldpwncqszvftbrmjlhg",
-        "nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg",
-        "zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw",
+    const SAMPLE: [&[u8]; 5] = [
+        b"mjqjpqmgbljsphdztnvjfqwrcgsmlb",
+        b"bvwbjplbgvbhsrlpgdmjqwftvncz",
+        b"nppdvjthqldpwncqszvftbrmjlhg",
+        b"nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg",
+        b"zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw",
     ];
 
     #[test]
@@ -76,7 +75,7 @@ mod tests {
 
         #[test]
         pub fn test() {
-            let input = INPUT.trim_end_matches('\n');
+            let input = INPUT.trim_end_matches('\n').as_bytes();
             let output = input;
 
             assert_eq!(part1(output), ANSWERS.0);
