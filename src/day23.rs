@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
 
@@ -21,31 +21,34 @@ const EAST: [(i64, i64); 3] = [(-1, 1), (0, 1), (1, 1)];
 pub struct Elf(i64, i64);
 
 impl Elf {
-    fn tick(&self, map: &[Elf], i: usize) -> Option<Elf> {
+    fn tick(&self, map: &HashSet<Elf>, i: usize) -> Option<Elf> {
         if self.check(map, &ALL) {
             return None;
         }
 
-        for (dir, delta) in [
+        [
+            (NORTH, (-1, 0)),
+            (SOUTH, (1, 0)),
+            (WEST, (0, -1)),
+            (EAST, (0, 1)),
             (NORTH, (-1, 0)),
             (SOUTH, (1, 0)),
             (WEST, (0, -1)),
             (EAST, (0, 1)),
         ]
         .iter()
-        .cycle()
-        .skip(i)
+        .skip(i % 4)
         .take(4)
-        {
+        .find_map(|(dir, delta)| {
             if self.check(map, dir) {
-                return Some(Elf(self.0 + delta.0, self.1 + delta.1));
+                Some(Elf(self.0 + delta.0, self.1 + delta.1))
+            } else {
+                None
             }
-        }
-
-        None
+        })
     }
 
-    fn check(&self, map: &[Elf], dirs: &[(i64, i64)]) -> bool {
+    fn check(&self, map: &HashSet<Elf>, dirs: &[(i64, i64)]) -> bool {
         dirs.iter()
             .map(|(y, x)| Elf(self.0 + y, self.1 + x))
             .all(|elf| !map.contains(&elf))
@@ -53,7 +56,7 @@ impl Elf {
 }
 
 #[aoc_generator(day23)]
-pub fn generator(input: &str) -> Vec<Elf> {
+pub fn generator(input: &str) -> HashSet<Elf> {
     input
         .lines()
         .enumerate()
@@ -70,14 +73,14 @@ pub fn generator(input: &str) -> Vec<Elf> {
 }
 
 #[aoc(day23, part1)]
-pub fn part1(inputs: &[Elf]) -> u64 {
-    let mut a = inputs.to_vec();
+pub fn part1(inputs: &HashSet<Elf>) -> u64 {
+    let mut a = inputs.clone();
 
     for round in 0..10 {
         let mut new_moves = HashMap::default();
-        for (id, elf) in a.iter().enumerate() {
+        for elf in a.iter() {
             if let Some(new_elf) = elf.tick(&a, round) {
-                new_moves.entry(new_elf).or_insert_with(Vec::new).push(id);
+                new_moves.entry(new_elf).or_insert_with(Vec::new).push(*elf);
             }
         }
 
@@ -85,9 +88,10 @@ pub fn part1(inputs: &[Elf]) -> u64 {
             break;
         }
 
-        for (pos, elves) in new_moves.iter() {
-            if elves.len() == 1 {
-                a[elves[0]] = *pos;
+        for (new_pos, old_pos) in new_moves {
+            if old_pos.len() == 1 {
+                a.remove(old_pos.first().unwrap());
+                a.insert(new_pos);
             }
         }
     }
@@ -99,14 +103,14 @@ pub fn part1(inputs: &[Elf]) -> u64 {
 }
 
 #[aoc(day23, part2)]
-pub fn part2(inputs: &[Elf]) -> usize {
-    let mut a = inputs.to_vec();
+pub fn part2(inputs: &HashSet<Elf>) -> usize {
+    let mut a = inputs.clone();
 
     for round in 0.. {
         let mut new_moves = HashMap::default();
-        for (id, elf) in a.iter().enumerate() {
+        for elf in a.iter() {
             if let Some(new_elf) = elf.tick(&a, round) {
-                new_moves.entry(new_elf).or_insert_with(Vec::new).push(id);
+                new_moves.entry(new_elf).or_insert_with(Vec::new).push(*elf);
             }
         }
 
@@ -114,9 +118,10 @@ pub fn part2(inputs: &[Elf]) -> usize {
             return round + 1;
         }
 
-        for (pos, elves) in new_moves.iter() {
-            if elves.len() == 1 {
-                a[elves[0]] = *pos;
+        for (new_pos, old_pos) in new_moves.iter() {
+            if old_pos.len() == 1 {
+                a.remove(old_pos.first().unwrap());
+                a.insert(*new_pos);
             }
         }
     }
@@ -173,7 +178,7 @@ mod tests {
             let output = generator(input);
 
             assert_eq!(part1(&output), ANSWERS.0);
-            // assert_eq!(part2(&output), ANSWERS.1);
+            assert_eq!(part2(&output), ANSWERS.1);
         }
     }
 }
