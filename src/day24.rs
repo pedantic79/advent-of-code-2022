@@ -101,8 +101,15 @@ impl World {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 struct State {
-    pos: Option<(usize, usize)>,
+    pos: Pos,
     world_num: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+enum Pos {
+    Start,
+    Some((usize, usize)),
+    End,
 }
 
 #[aoc_generator(day24)]
@@ -113,7 +120,7 @@ pub fn generator(input: &str) -> World {
     let mut res = Vec::new();
 
     for line in lines {
-        if !line.starts_with("##") {
+        if !line.contains("##") {
             res.push(line.bytes().filter_map(square2value).collect())
         }
     }
@@ -129,44 +136,69 @@ fn get_world(n: usize, worlds: &mut Vec<World>) -> &World {
     worlds.get(n).unwrap()
 }
 
+fn solve(
+    worlds: &mut Vec<World>,
+    world_num: usize,
+    start: (usize, usize),
+    end: (usize, usize),
+) -> usize {
+    let height = worlds[0].world.len();
+    let width = worlds[0].world[0].len();
+
+    let res = bfs(
+        &State {
+            pos: Pos::Start,
+            world_num,
+        },
+        |state| {
+            let world_num = state.world_num + 1;
+            match state.pos {
+                Pos::Some((r, c)) => {
+                    if (r, c) == end {
+                        return vec![State {
+                            pos: Pos::End,
+                            world_num,
+                        }];
+                    }
+                    std::iter::once((r, c))
+                        .chain(neighbors(r, c, height, width))
+                        .filter(|&(y, x)| get_world(world_num, worlds).world[y][x] == NONE)
+                        .map(|pos| State {
+                            pos: Pos::Some(pos),
+                            world_num,
+                        })
+                        .collect()
+                }
+                Pos::Start => {
+                    let mut v = vec![State {
+                        pos: state.pos,
+                        world_num,
+                    }];
+
+                    if get_world(world_num, worlds).world[start.0][start.1] == NONE {
+                        v.push(State {
+                            pos: Pos::Some((start.0, start.1)),
+                            world_num,
+                        })
+                    }
+
+                    v
+                }
+                Pos::End => vec![],
+            }
+        },
+        |state| state.pos == Pos::End,
+    );
+
+    res.unwrap().len() - 1
+}
+
 #[aoc(day24, part1)]
 pub fn part1(inputs: &World) -> usize {
     let height = inputs.world.len();
     let width = inputs.world[0].len();
     let mut worlds = vec![inputs.clone()];
-
-    let res = bfs(
-        &State {
-            pos: None,
-            world_num: 0,
-        },
-        |state| {
-            let world_num = state.world_num + 1;
-            if let Some((r, c)) = state.pos {
-                std::iter::once((r, c))
-                    .chain(neighbors(r, c, height, width))
-                    .filter(|&(y, x)| get_world(world_num, &mut worlds).world[y][x] == NONE)
-                    .map(|pos| State {
-                        pos: Some(pos),
-                        world_num,
-                    })
-                    .collect()
-            } else if get_world(world_num, &mut worlds).world[0][0] == NONE {
-                vec![State {
-                    pos: Some((0, 0)),
-                    world_num,
-                }]
-            } else {
-                vec![State {
-                    pos: state.pos,
-                    world_num,
-                }]
-            }
-        },
-        |state| state.pos == Some((height - 1, width - 1)),
-    );
-
-    res.unwrap().len()
+    solve(&mut worlds, 0, (0, 0), (height - 1, width - 1))
 }
 
 #[aoc(day24, part2)]
@@ -174,105 +206,9 @@ pub fn part2(inputs: &World) -> usize {
     let height = inputs.world.len();
     let width = inputs.world[0].len();
     let mut worlds = vec![inputs.clone()];
-
-    let res = bfs(
-        &State {
-            pos: None,
-            world_num: 0,
-        },
-        |state| {
-            let world_num = state.world_num + 1;
-            if let Some((r, c)) = state.pos {
-                std::iter::once((r, c))
-                    .chain(neighbors(r, c, height, width))
-                    .filter(|&(y, x)| get_world(world_num, &mut worlds).world[y][x] == NONE)
-                    .map(|pos| State {
-                        pos: Some(pos),
-                        world_num,
-                    })
-                    .collect()
-            } else if get_world(world_num, &mut worlds).world[0][0] == NONE {
-                vec![State {
-                    pos: Some((0, 0)),
-                    world_num,
-                }]
-            } else {
-                vec![State {
-                    pos: state.pos,
-                    world_num,
-                }]
-            }
-        },
-        |state| state.pos == Some((height - 1, width - 1)),
-    );
-
-    let mut move_num = res.unwrap().len() + 1;
-
-    let res = bfs(
-        &State {
-            pos: None,
-            world_num: move_num,
-        },
-        |state| {
-            let world_num = state.world_num + 1;
-            if let Some((r, c)) = state.pos {
-                std::iter::once((r, c))
-                    .chain(neighbors(r, c, height, width))
-                    .filter(|&(y, x)| get_world(world_num, &mut worlds).world[y][x] == NONE)
-                    .map(|pos| State {
-                        pos: Some(pos),
-                        world_num,
-                    })
-                    .collect()
-            } else if get_world(world_num, &mut worlds).world[height - 1][width - 1] == NONE {
-                vec![State {
-                    pos: Some((height - 1, width - 1)),
-                    world_num,
-                }]
-            } else {
-                vec![State {
-                    pos: state.pos,
-                    world_num,
-                }]
-            }
-        },
-        |state| state.pos == Some((0, 0)),
-    );
-
-    move_num += res.unwrap().len() + 1;
-
-    let res = bfs(
-        &State {
-            pos: None,
-            world_num: move_num,
-        },
-        |state| {
-            let world_num = state.world_num + 1;
-            if let Some((r, c)) = state.pos {
-                std::iter::once((r, c))
-                    .chain(neighbors(r, c, height, width))
-                    .filter(|&(y, x)| get_world(world_num, &mut worlds).world[y][x] == NONE)
-                    .map(|pos| State {
-                        pos: Some(pos),
-                        world_num,
-                    })
-                    .collect()
-            } else if get_world(world_num, &mut worlds).world[0][0] == NONE {
-                vec![State {
-                    pos: Some((0, 0)),
-                    world_num,
-                }]
-            } else {
-                vec![State {
-                    pos: state.pos,
-                    world_num,
-                }]
-            }
-        },
-        |state| state.pos == Some((height - 1, width - 1)),
-    );
-
-    move_num + res.unwrap().len()
+    let mut move_num = solve(&mut worlds, 0, (0, 0), (height - 1, width - 1));
+    move_num += solve(&mut worlds, move_num, (height - 1, width - 1), (0, 0));
+    move_num + solve(&mut worlds, move_num, (0, 0), (height - 1, width - 1))
 }
 
 #[cfg(test)]
@@ -300,7 +236,7 @@ mod tests {
 
     #[test]
     pub fn test2() {
-        // assert_eq!(part2(&generator(SAMPLE)), 54);
+        assert_eq!(part2(&generator(SAMPLE)), 54);
     }
 
     mod regression {
