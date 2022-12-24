@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 
 use aoc_runner_derive::{aoc, aoc_generator};
-use pathfinding::prelude::bfs;
+use num::Integer;
+use pathfinding::prelude::astar;
 
 use crate::common::utils::neighbors;
 
@@ -48,11 +49,11 @@ fn wrap_math(pos: usize, max: usize, positive: bool) -> usize {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct World {
+pub struct WorldState {
     world: Vec<Vec<u8>>,
 }
 
-impl Debug for World {
+impl Debug for WorldState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f)?;
         for line in self.world.iter() {
@@ -66,7 +67,7 @@ impl Debug for World {
     }
 }
 
-impl World {
+impl WorldState {
     fn tick(&self) -> Self {
         let height = self.world.len();
         let width = self.world[0].len();
@@ -102,7 +103,28 @@ impl World {
             }
         }
 
-        World { world }
+        WorldState { world }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct World {
+    states: Vec<WorldState>,
+    height: usize,
+    width: usize,
+    freq: usize,
+}
+
+impl World {
+    fn generate(&mut self, count: usize) {
+        for _ in 0..self.freq.min(count) {
+            let new_state = self.states[self.states.len() - 1].tick();
+            self.states.push(new_state);
+        }
+    }
+
+    fn get(&self, n: usize) -> &WorldState {
+        self.states.get(n % self.freq).unwrap()
     }
 }
 
@@ -114,34 +136,29 @@ struct State {
 
 #[aoc_generator(day24)]
 pub fn generator(input: &str) -> World {
-    let mut res = Vec::new();
+    let mut res = Vec::<Vec<u8>>::new();
 
     for line in input.lines() {
         if !line.is_empty() {
             res.push(line.bytes().filter_map(square2value).collect())
         }
     }
+    let height = res.len();
+    let width = res[0].len();
+    let freq = height.lcm(&width);
 
-    World { world: res }
-}
-
-fn get_world(n: usize, worlds: &mut Vec<World>) -> &World {
-    while n >= worlds.len() {
-        let new_state = worlds[worlds.len() - 1].tick();
-        worlds.push(new_state);
+    World {
+        states: vec![WorldState { world: res }],
+        height,
+        width,
+        freq,
     }
-    worlds.get(n).unwrap()
 }
 
-fn solve(
-    worlds: &mut Vec<World>,
-    world_num: usize,
-    start: (usize, usize),
-    end: (usize, usize),
-) -> usize {
-    let height = worlds[0].world.len();
-    let width = worlds[0].world[0].len();
-    let res = bfs(
+fn solve(worlds: &World, world_num: usize, start: (usize, usize), end: (usize, usize)) -> usize {
+    let height = worlds.height;
+    let width = worlds.width;
+    let res = astar(
         &State {
             pos: start,
             world_num,
@@ -151,34 +168,36 @@ fn solve(
             let (r, c) = state.pos;
             std::iter::once((r, c))
                 .chain(neighbors(r, c, height, width))
-                .filter(|&(y, x)| get_world(world_num, worlds).world[y][x] == NONE)
-                .map(|pos| State { pos, world_num })
+                .filter(|&(y, x)| worlds.get(world_num).world[y][x] == NONE)
+                .map(|pos| (State { pos, world_num }, 1))
                 .collect::<Vec<_>>()
         },
+        |state| state.pos.0.abs_diff(end.0) + state.pos.1.abs_diff(end.1),
         |state| state.pos == (end.0, end.1),
     );
 
-    world_num + res.unwrap().len() - 1
+    world_num + res.unwrap().1
 }
 
 #[aoc(day24, part1)]
-pub fn part1(inputs: &World) -> usize {
-    let height = inputs.world.len();
-    let width = inputs.world[0].len();
-    let mut worlds = vec![inputs.clone()];
+pub fn part1(world: &World) -> usize {
+    let mut world = world.clone();
+    world.generate(271);
 
-    solve(&mut worlds, 0, (0, 1), (height - 1, width - 2))
+    solve(&world, 0, (0, 1), (world.height - 1, world.width - 2))
 }
 
 #[aoc(day24, part2)]
-pub fn part2(inputs: &World) -> usize {
-    let height = inputs.world.len();
-    let width = inputs.world[0].len();
-    let mut worlds = vec![inputs.clone()];
+pub fn part2(world: &World) -> usize {
+    let start = (0, 1);
+    let end = (world.height - 1, world.width - 2);
 
-    let move_num = solve(&mut worlds, 0, (0, 1), (height - 1, width - 2));
-    let move_num = solve(&mut worlds, move_num, (height - 1, width - 2), (0, 1));
-    solve(&mut worlds, move_num, (0, 1), (height - 1, width - 2))
+    let mut world = world.clone();
+    world.generate(850);
+
+    let move_num = solve(&world, 0, start, end);
+    let move_num = solve(&world, move_num, end, start);
+    solve(&world, move_num, start, end)
 }
 
 #[cfg(test)]
@@ -194,7 +213,7 @@ mod tests {
 
     #[test]
     pub fn test_input() {
-        println!("{:?}", generator(SAMPLE));
+        // println!("{:?}", generator(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
