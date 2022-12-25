@@ -70,12 +70,12 @@ ttgJtRGJQctTZtZT
 CrZsJsPPZsGzwwsLwLmpwMDw";
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         assert_eq!(part1(&generator(SAMPLE)), 157);
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         assert_eq!(part2(&generator(SAMPLE)), 70);
     }
 

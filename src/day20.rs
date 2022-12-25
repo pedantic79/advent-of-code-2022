@@ -88,19 +88,19 @@ mod tests {
 4";
 
     #[test]
-    pub fn test_input() {
+    pub fn input_test() {
         println!("{:?}", generator(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         assert_eq!(part1(&generator(SAMPLE)), 3);
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         assert_eq!(part2(&generator(SAMPLE)), 1623178306);
     }
 

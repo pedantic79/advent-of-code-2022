@@ -229,19 +229,19 @@ mod tests {
 Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsidian robot costs 3 ore and 8 clay. Each geode robot costs 3 ore and 12 obsidian.";
 
     #[test]
-    pub fn test_input() {
+    pub fn input_test() {
         println!("{:?}", generator(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         assert_eq!(part1(&generator(SAMPLE)), 33);
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         // assert_eq!(part2(&generator(SAMPLE)), 62 * 56);
     }
 
