@@ -1,10 +1,9 @@
 use std::fmt::Debug;
 
 use aoc_runner_derive::{aoc, aoc_generator};
-use num::Integer;
 use pathfinding::prelude::astar;
 
-use crate::common::utils::neighbors;
+use crate::common::utils::neighbors_and_self;
 
 const NONE: u8 = 0;
 const UP: u8 = 0b0001;
@@ -112,19 +111,17 @@ pub struct World {
     states: Vec<WorldState>,
     height: usize,
     width: usize,
-    freq: usize,
 }
 
 impl World {
-    fn generate(&mut self, count: usize) {
-        for _ in 0..self.freq.min(count) {
+    fn get(&mut self, n: usize) -> &WorldState {
+        let l = self.states.len();
+        for _ in l..=n {
             let new_state = self.states[self.states.len() - 1].tick();
             self.states.push(new_state);
         }
-    }
 
-    fn get(&self, n: usize) -> &WorldState {
-        self.states.get(n % self.freq).unwrap()
+        self.states.get(n).unwrap()
     }
 }
 
@@ -145,17 +142,20 @@ pub fn generator(input: &str) -> World {
     }
     let height = res.len();
     let width = res[0].len();
-    let freq = height.lcm(&width);
 
     World {
         states: vec![WorldState { world: res }],
         height,
         width,
-        freq,
     }
 }
 
-fn solve(worlds: &World, world_num: usize, start: (usize, usize), end: (usize, usize)) -> usize {
+fn solve(
+    worlds: &mut World,
+    world_num: usize,
+    start: (usize, usize),
+    end: (usize, usize),
+) -> usize {
     let height = worlds.height;
     let width = worlds.width;
     let res = astar(
@@ -166,8 +166,7 @@ fn solve(worlds: &World, world_num: usize, start: (usize, usize), end: (usize, u
         |state| {
             let world_num = state.world_num + 1;
             let (r, c) = state.pos;
-            std::iter::once((r, c))
-                .chain(neighbors(r, c, height, width))
+            neighbors_and_self(r, c, height, width)
                 .filter(|&(y, x)| worlds.get(world_num).world[y][x] == NONE)
                 .map(|pos| (State { pos, world_num }, 1))
                 .collect::<Vec<_>>()
@@ -182,22 +181,21 @@ fn solve(worlds: &World, world_num: usize, start: (usize, usize), end: (usize, u
 #[aoc(day24, part1)]
 pub fn part1(world: &World) -> usize {
     let mut world = world.clone();
-    world.generate(271);
+    let start = (0, 1);
+    let end = (world.height - 1, world.width - 2);
 
-    solve(&world, 0, (0, 1), (world.height - 1, world.width - 2))
+    solve(&mut world, 0, start, end)
 }
 
 #[aoc(day24, part2)]
 pub fn part2(world: &World) -> usize {
+    let mut world = world.clone();
     let start = (0, 1);
     let end = (world.height - 1, world.width - 2);
 
-    let mut world = world.clone();
-    world.generate(850);
-
-    let move_num = solve(&world, 0, start, end);
-    let move_num = solve(&world, move_num, end, start);
-    solve(&world, move_num, start, end)
+    let move_num = solve(&mut world, 0, start, end);
+    let move_num = solve(&mut world, move_num, end, start);
+    solve(&mut world, move_num, start, end)
 }
 
 #[cfg(test)]
