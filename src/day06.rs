@@ -47,21 +47,21 @@ mod tests {
     ];
 
     #[test]
-    pub fn test_input() {
+    pub fn input_test() {
         // println!("{:?}", generator(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         for (&input, ans) in SAMPLE.iter().zip([7, 5, 6, 10, 11]) {
             assert_eq!(part1(input), ans);
         }
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         for (&input, ans) in SAMPLE.iter().zip([19, 23, 23, 29, 26]) {
             assert_eq!(part2(input), ans);
         }

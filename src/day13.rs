@@ -122,19 +122,19 @@ mod tests {
 [1,[2,[3,[4,[5,6,0]]]],8,9]";
 
     #[test]
-    pub fn test_input() {
+    pub fn input_test() {
         // println!("{:?}", generator1(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         assert_eq!(part1(&generator(SAMPLE)), 13);
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         assert_eq!(part2(&generator(SAMPLE)), 140);
     }
 

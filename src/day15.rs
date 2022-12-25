@@ -191,19 +191,19 @@ Sensor at x=14, y=3: closest beacon is at x=15, y=3
 Sensor at x=20, y=1: closest beacon is at x=15, y=3";
 
     #[test]
-    pub fn test_input() {
+    pub fn input_test() {
         println!("{:?}", generator(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         assert_eq!(part1(&generator(SAMPLE)), 26);
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         assert_eq!(part2(&generator(SAMPLE)), 56000011);
     }
 

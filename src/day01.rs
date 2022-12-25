@@ -62,19 +62,19 @@ mod tests {
 10000";
 
     #[test]
-    pub fn test_input() {
+    pub fn input_test() {
         println!("{:?}", generator(SAMPLE));
 
         assert_eq!(generator(SAMPLE), &[6000, 4000, 11000, 24000, 10000]);
     }
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         assert_eq!(part1(&generator(SAMPLE)), 24000);
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         assert_eq!(part2(&generator(SAMPLE)), 45000);
     }
 

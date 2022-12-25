@@ -92,19 +92,19 @@ mod tests {
     const SAMPLE: &str = include_str!("day10/SAMPLE2.txt");
 
     #[test]
-    pub fn test_input() {
+    pub fn input_test() {
         // println!("{:?}", generator(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
 
     #[test]
-    pub fn test1() {
+    pub fn part1_test() {
         assert_eq!(part1(&generator(SAMPLE)), 13140);
     }
 
     #[test]
-    pub fn test2() {
+    pub fn part2_test() {
         const ANS: &str = r#"
 ##..##..##..##..##..##..##..##..##..##..
 ###...###...###...###...###...###...###.
