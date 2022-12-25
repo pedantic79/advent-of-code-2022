@@ -130,20 +130,43 @@ where
         .unwrap()
 }
 
+pub fn neighbors_arbitray(
+    diffs: &[(isize, isize)],
+    r: usize,
+    c: usize,
+    r_max: usize,
+    c_max: usize,
+) -> impl Iterator<Item = (usize, usize)> + '_ {
+    diffs.iter().filter_map(move |&(y, x)| {
+        let r_new = r.checked_add_isize_clamp(y, r_max)?;
+        let c_new = c.checked_add_isize_clamp(x, c_max)?;
+
+        Some((r_new, c_new))
+    })
+}
+
 pub fn neighbors(
     r: usize,
     c: usize,
     r_max: usize,
     c_max: usize,
 ) -> impl Iterator<Item = (usize, usize)> {
-    [(-1, 0), (0, -1), (0, 1), (1, 0)]
-        .iter()
-        .filter_map(move |&(y, x)| {
-            let r_new = r.checked_add_isize_clamp(y, r_max)?;
-            let c_new = c.checked_add_isize_clamp(x, c_max)?;
+    neighbors_arbitray(&[(-1, 0), (0, -1), (0, 1), (1, 0)], r, c, r_max, c_max)
+}
 
-            Some((r_new, c_new))
-        })
+pub fn neighbors_and_self(
+    r: usize,
+    c: usize,
+    r_max: usize,
+    c_max: usize,
+) -> impl Iterator<Item = (usize, usize)> {
+    neighbors_arbitray(
+        &[(0, 0), (-1, 0), (0, -1), (0, 1), (1, 0)],
+        r,
+        c,
+        r_max,
+        c_max,
+    )
 }
 
 pub fn neighbors_diag(
@@ -152,23 +175,47 @@ pub fn neighbors_diag(
     r_max: usize,
     c_max: usize,
 ) -> impl Iterator<Item = (usize, usize)> {
-    [
-        (-1, -1),
-        (-1, 0),
-        (-1, 1),
-        (0, -1),
-        (0, 1),
-        (1, -1),
-        (1, 0),
-        (1, 1),
-    ]
-    .iter()
-    .filter_map(move |&(y, x)| {
-        let r_new = r.checked_add_isize_clamp(y, r_max)?;
-        let c_new = c.checked_add_isize_clamp(x, c_max)?;
+    neighbors_arbitray(
+        &[
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ],
+        r,
+        c,
+        r_max,
+        c_max,
+    )
+}
 
-        Some((r_new, c_new))
-    })
+pub fn neighbors_diag_and_self(
+    r: usize,
+    c: usize,
+    r_max: usize,
+    c_max: usize,
+) -> impl Iterator<Item = (usize, usize)> {
+    neighbors_arbitray(
+        &[
+            (0, 0),
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ],
+        r,
+        c,
+        r_max,
+        c_max,
+    )
 }
 
 pub fn slice_get_mut_twice<T>(slice: &mut [T], index0: usize, index1: usize) -> (&mut T, &mut T) {
