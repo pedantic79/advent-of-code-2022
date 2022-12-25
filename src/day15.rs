@@ -3,37 +3,41 @@ use std::iter::repeat;
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
-use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
-use scanf::sscanf;
+use nom::{bytes::complete::tag, character::complete, combinator::map, sequence::tuple, IResult};
+use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Object {
+pub struct SensorReport {
     sensor: (i64, i64),
     beacon: (i64, i64),
     distance: i64,
 }
 
+fn parse_sensor_report(line: &str) -> IResult<&str, SensorReport> {
+    map(
+        tuple((
+            tag("Sensor at x="),
+            complete::i64,
+            tag(", y="),
+            complete::i64,
+            tag(": closest beacon is at x="),
+            complete::i64,
+            tag(", y="),
+            complete::i64,
+        )),
+        |(_, a, _, b, _, c, _, d)| SensorReport {
+            sensor: (b, a),
+            beacon: (d, c),
+            distance: manhattan_distance((b, a), (d, c)),
+        },
+    )(line)
+}
+
 #[aoc_generator(day15)]
-pub fn generator(input: &str) -> Vec<Object> {
+pub fn generator(input: &str) -> Vec<SensorReport> {
     input
         .lines()
-        .map(|line| {
-            let (mut a, mut b, mut c, mut d) = (0, 0, 0, 0);
-            sscanf!(
-                line,
-                "Sensor at x={}, y={}: closest beacon is at x={}, y={}",
-                a,
-                b,
-                c,
-                d
-            )
-            .unwrap();
-            Object {
-                sensor: (b, a),
-                beacon: (d, c),
-                distance: manhattan_distance((b, a), (d, c)),
-            }
-        })
+        .map(|line| parse_sensor_report(line).unwrap().1)
         .collect()
 }
 
@@ -42,113 +46,60 @@ fn manhattan_distance(a: (i64, i64), b: (i64, i64)) -> i64 {
 }
 
 #[aoc(day15, part1)]
-pub fn part1(inputs: &[Object]) -> usize {
-    let objects = inputs
+pub fn part1(reports: &[SensorReport]) -> usize {
+    let objects = reports
         .iter()
-        .flat_map(
-            |&Object {
-                 sensor,
-                 beacon,
-                 distance: _,
-             }| [sensor, beacon],
-        )
+        .flat_map(|&SensorReport { sensor, beacon, .. }| [sensor, beacon])
         .collect::<HashSet<_>>();
 
-    let beacon_min_max = inputs
+    let beacon_min_max = reports
         .iter()
         .flat_map(
-            |&Object {
-                 sensor,
-                 beacon: _,
-                 distance,
+            |&SensorReport {
+                 sensor, distance, ..
              }| [sensor.1 - distance, sensor.1 + distance],
         )
         .minmax()
         .into_option()
         .unwrap();
 
-    // println!("{beacon_min_max:?}");
+    let y = if reports.len() == 14 { 10 } else { 2000000 };
 
-    let y = if inputs.len() == 14 { 10 } else { 2000000 };
-    let mut count = 0;
-    for x in beacon_min_max.0..=beacon_min_max.1 {
-        for sensor in inputs.iter() {
-            if manhattan_distance((y, x), sensor.sensor) <= sensor.distance
-                && !objects.contains(&(y, x))
-            {
-                // println!("({y},{x})");
-                count += 1;
-                break;
-            }
-        }
-    }
-    count
-
-    // let mut map: HashMap<(i64, i64), u8> = HashMap::default();
-
-    // for &Object {
-    //     sensor,
-    //     beacon,
-    //     distance,
-    // } in inputs.iter()
-    // {
-    //     map.insert(sensor, b'b');
-    //     map.insert(beacon, b'b');
-
-    //     for x in 0..=distance {
-    //         for y in 0..=(distance - x) {
-    //             *map.entry((sensor.0 + y, sensor.1 + x)).or_insert(0) += 1;
-    //             *map.entry((sensor.0 + y, sensor.1 - x)).or_insert(0) += 1;
-    //             *map.entry((sensor.0 - y, sensor.1 + x)).or_insert(0) += 1;
-    //             *map.entry((sensor.0 - y, sensor.1 - x)).or_insert(0) += 1;
-    //         }
-    //     }
-    // }
-
-    // map.iter()
-    //     .filter(|((y, _), v)| y == &10 && **v < 99)
-    //     .count()
+    (beacon_min_max.0..=beacon_min_max.1)
+        .into_par_iter()
+        .filter_map(|x| {
+            reports.iter().find(|sensor| {
+                manhattan_distance((y, x), sensor.sensor) <= sensor.distance
+                    && !objects.contains(&(y, x))
+            })
+        })
+        .count()
 }
 
 #[aoc(day15, part2)]
-pub fn part2(inputs: &[Object]) -> i64 {
-    let objects = inputs
+pub fn part2(reports: &[SensorReport]) -> i64 {
+    let poi = reports
         .iter()
-        .flat_map(
-            |&Object {
-                 sensor,
-                 beacon,
-                 distance: _,
-             }| [sensor, beacon],
-        )
+        .flat_map(|&SensorReport { sensor, beacon, .. }| [sensor, beacon])
         .collect();
 
-    let ans = scan(inputs, &objects).expect("not found");
+    let ans = scan(reports, &poi).expect("not found");
 
     ans.1 * 4000000 + ans.0
 }
 
-fn scan(inputs: &[Object], objects: &HashSet<(i64, i64)>) -> Option<(i64, i64)> {
+fn scan(inputs: &[SensorReport], points_of_interest: &HashSet<(i64, i64)>) -> Option<(i64, i64)> {
     let max = if inputs.len() == 14 { 20 } else { 4000000 };
 
     inputs.par_iter().find_map_any(|o| {
         let mut point = (o.sensor.0 - o.distance - 1, o.sensor.1);
-        // for dir in [(1, 1), (1, -1), (-1, -1), (-1, 1)] {
-        //     for _ in 0..o.distance {
-        //         point = (point.0 + dir.0, point.1 + dir.1);
-        //         if out_range(inputs, objects, point, max) {
-        //             return Some(point);
-        //         }
-        //     }
-        // }
-        // None
 
         [(1, 1), (1, -1), (-1, -1), (-1, 1)]
             .iter()
             .flat_map(|x| repeat(x).take(o.distance as usize))
             .find_map(|dir| {
                 point = (point.0 + dir.0, point.1 + dir.1);
-                if out_range(inputs, objects, point, max) {
+                if out_range(inputs, points_of_interest, point, max) {
                     Some(point)
                 } else {
                     None
@@ -157,13 +108,16 @@ fn scan(inputs: &[Object], objects: &HashSet<(i64, i64)>) -> Option<(i64, i64)> 
     })
 }
 
-fn out_range(inputs: &[Object], objects: &HashSet<(i64, i64)>, p: (i64, i64), max: i64) -> bool {
-    if p.0 > 0 && p.1 > 0 && p.0 <= max && p.1 <= max && !objects.contains(&p) {
+fn out_range(
+    inputs: &[SensorReport],
+    points_of_interest: &HashSet<(i64, i64)>,
+    p: (i64, i64),
+    max: i64,
+) -> bool {
+    if p.0 > 0 && p.1 > 0 && p.0 <= max && p.1 <= max && !points_of_interest.contains(&p) {
         inputs.iter().all(
-            |&Object {
-                 sensor,
-                 beacon: _,
-                 distance,
+            |&SensorReport {
+                 sensor, distance, ..
              }| manhattan_distance(p, sensor) > distance,
         )
     } else {
