@@ -47,24 +47,23 @@ pub fn part1(map: &HashMap<(usize, usize), u8>) -> usize {
     let mut count = 0;
 
     'outer: loop {
-        let (mut x, mut y) = (500_usize, 0);
+        let mut x = 500_usize;
 
-        'inner: loop {
-            if y > max {
-                break 'outer;
+        for y in 0..=max {
+            if let Some(x2) = [0, -1, 1]
+                .iter()
+                .map(|diff| x.wrapping_add_signed(*diff))
+                .find(|new| !map.contains_key(&(*new, y)))
+            {
+                x = x2;
+            } else {
+                map.insert((x, y - 1), b'o');
+                count += 1;
+                continue 'outer;
             }
-
-            y += 1;
-            for x_diff in [0, -1, 1] {
-                if !map.contains_key(&(x.wrapping_add_signed(x_diff), y)) {
-                    x = x.wrapping_add_signed(x_diff);
-                    continue 'inner;
-                }
-            }
-            map.insert((x, y - 1), b'o');
-            count += 1;
-            break;
         }
+
+        break 'outer;
     }
 
     count
