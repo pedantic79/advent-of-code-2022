@@ -3,7 +3,9 @@ use std::collections::VecDeque;
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::iproduct;
-use nom::{bytes::complete::tag, character::complete, combinator::map, sequence::tuple, IResult};
+use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
+
+use crate::common::nom::nom_i64;
 // use rustc_hash::FxHashSet as HashSet;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
@@ -14,7 +16,7 @@ pub struct Cube {
 }
 
 fn num(n: &str) -> IResult<&str, i64> {
-    complete::i64(n)
+    nom_i64(n)
 }
 
 #[aoc_generator(day18)]

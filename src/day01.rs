@@ -1,15 +1,16 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
     bytes::complete::tag,
-    character::complete,
     combinator::opt,
     multi::{fold_many1, separated_list1},
     sequence::terminated,
     IResult,
 };
 
+use crate::common::nom::nom_u32;
+
 fn parse_num(s: &str) -> IResult<&str, u32> {
-    terminated(complete::u32, opt(tag("\n")))(s)
+    terminated(nom_u32, opt(tag("\n")))(s)
 }
 
 #[aoc_generator(day01)]

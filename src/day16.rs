@@ -4,6 +4,8 @@ use itertools::Itertools;
 use nom::{branch::alt, bytes::complete::tag, multi::separated_list1, sequence::tuple, IResult};
 use std::cmp::Reverse;
 
+use crate::common::nom::nom_u32;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Object {
     rate: usize,
@@ -15,7 +17,7 @@ fn parse_line(s: &str) -> IResult<&str, (&str, u32, Vec<&str>)> {
         tag("Valve "),
         nom::bytes::complete::take(2usize),
         tag(" has flow rate="),
-        nom::character::complete::u32,
+        nom_u32,
         alt((
             tag("; tunnels lead to valves "),
             tag("; tunnel leads to valve "),
