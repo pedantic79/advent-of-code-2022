@@ -1,8 +1,7 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{
-    bytes::complete::tag, character::complete, combinator::map, multi::separated_list1,
-    sequence::tuple,
-};
+use nom::{bytes::complete::tag, combinator::map, multi::separated_list1, sequence::tuple};
+
+use crate::common::nom::nom_u32;
 
 type Range = (u32, u32);
 
@@ -18,13 +17,13 @@ pub fn generator(input: &str) -> Vec<Assignments> {
         tag("\n"),
         map(
             tuple((
-                complete::u32::<&str, ()>,
+                nom_u32,
                 tag("-"),
-                complete::u32,
+                nom_u32,
                 tag(","),
-                complete::u32,
+                nom_u32,
                 tag("-"),
-                complete::u32,
+                nom_u32,
             )),
             |(a, _, b, _, x, _, y)| {
                 let (one, two) = ((a, b), (x, y));

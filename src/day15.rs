@@ -3,8 +3,10 @@ use std::iter::repeat;
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
-use nom::{bytes::complete::tag, character::complete, combinator::map, sequence::tuple, IResult};
+use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+
+use crate::common::nom::nom_i64;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SensorReport {
@@ -17,13 +19,13 @@ fn parse_sensor_report(line: &str) -> IResult<&str, SensorReport> {
     map(
         tuple((
             tag("Sensor at x="),
-            complete::i64,
+            nom_i64,
             tag(", y="),
-            complete::i64,
+            nom_i64,
             tag(": closest beacon is at x="),
-            complete::i64,
+            nom_i64,
             tag(", y="),
-            complete::i64,
+            nom_i64,
         )),
         |(_, a, _, b, _, c, _, d)| SensorReport {
             sensor: (b, a),

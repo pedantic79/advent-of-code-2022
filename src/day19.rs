@@ -5,6 +5,8 @@ use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
+use crate::common::nom::nom_u16;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct BluePrint {
     num: u16,
@@ -15,7 +17,7 @@ pub struct BluePrint {
 }
 
 fn num(s: &str) -> IResult<&str, u16> {
-    nom::character::complete::u16(s)
+    nom_u16(s)
 }
 
 fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {

@@ -10,6 +10,8 @@ use nom::{
     IResult,
 };
 
+use crate::common::nom::nom_u32;
+
 #[derive(Debug, PartialEq, Eq)]
 enum Moves {
     Forward(u32),
@@ -82,7 +84,7 @@ fn parse_moves(line: &str) -> IResult<&str, Vec<Moves>> {
     complete(many0(alt((
         map(tag("L"), |_| Moves::Left),
         map(tag("R"), |_| Moves::Right),
-        map(nom::character::complete::u32, Moves::Forward),
+        map(nom_u32, Moves::Forward),
     ))))(line)
 }
 

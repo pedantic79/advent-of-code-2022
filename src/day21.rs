@@ -3,11 +3,13 @@ use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
-    character::complete::{self, one_of},
+    character::complete::one_of,
     combinator::map,
     sequence::tuple,
     IResult,
 };
+
+use crate::common::nom::nom_i64;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Operation {
@@ -41,7 +43,7 @@ fn parse_name(s: &str) -> IResult<&str, String> {
 
 fn parse_op(s: &str) -> IResult<&str, Operation> {
     alt((
-        map(complete::i64, Operation::Value),
+        map(nom_i64, Operation::Value),
         map(
             tuple((parse_name, tag(" "), one_of("+*/-"), tag(" "), parse_name)),
             |(l, _, op, _, r)| match op {

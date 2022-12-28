@@ -6,6 +6,8 @@ use nom::{
     sequence::delimited, IResult,
 };
 
+use crate::common::nom::nom_u8;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Signal {
     List(Vec<Signal>),
@@ -13,7 +15,7 @@ pub enum Signal {
 }
 
 fn num(s: &str) -> IResult<&str, Signal> {
-    map(nom::character::complete::u8, Signal::Value)(s)
+    map(nom_u8, Signal::Value)(s)
 }
 
 fn list(s: &str) -> IResult<&str, Signal> {
