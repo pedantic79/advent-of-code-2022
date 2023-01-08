@@ -1,12 +1,20 @@
 use std::{fmt::Debug, ops::RangeFrom};
 
 use nom::{
+<<<<<<< HEAD
     character::complete::newline,
+=======
+    bytes::complete::take,
+>>>>>>> 5ca57ce (common: Add custom nom parsers)
     combinator::{all_consuming, map, opt},
     error::{ErrorKind, ParseError},
     multi::separated_list0,
     sequence::terminated,
+<<<<<<< HEAD
     AsChar, Compare, IResult, InputIter, InputLength, InputTake, Parser, Slice,
+=======
+    AsChar, Compare, CompareResult, IResult, InputIter, InputLength, InputTake, Parser, Slice,
+>>>>>>> 5ca57ce (common: Add custom nom parsers)
 };
 
 /// parser for `usize` that is a  wrapper around [u64](https://docs.rs/nom/latest/nom/character/complete/fn.u64.html).
@@ -67,12 +75,50 @@ macro_rules! ints {
 
 ints! { nom_i8,i8 nom_i16,i16 nom_i32,i32 nom_i64,i64 nom_i128,i128}
 
+<<<<<<< HEAD
 pub fn process_input<F, I, R, E>(mut f: F) -> impl FnMut(I) -> R
 where
     I: Compare<I> + InputIter + Slice<RangeFrom<usize>> + InputLength + InputTake + Clone,
     F: Parser<I, R, E>,
     E: ParseError<I> + Debug,
     <I as InputIter>::Item: AsChar,
+=======
+pub trait NewLine {
+    fn get_newline() -> Self;
+}
+
+impl NewLine for &str {
+    fn get_newline() -> Self {
+        "\n"
+    }
+}
+
+impl NewLine for &[u8] {
+    fn get_newline() -> Self {
+        b"\n"
+    }
+}
+
+fn nl<I, E>(s: I) -> IResult<I, I, E>
+where
+    I: NewLine + Compare<I> + InputIter + InputTake + Clone,
+    E: ParseError<I>,
+{
+    let (remainder, ch) = take(1_usize)(s.clone())?;
+
+    if ch.compare(I::get_newline()) != CompareResult::Ok {
+        Err(nom::Err::Error(E::from_error_kind(s, ErrorKind::Not)))
+    } else {
+        Ok((remainder, ch))
+    }
+}
+
+pub fn process_input<F, I, R, E>(mut f: F) -> impl FnMut(I) -> R
+where
+    I: NewLine + Compare<I> + InputIter + InputTake + Clone + InputLength,
+    F: Parser<I, R, E>,
+    E: ParseError<I> + Debug,
+>>>>>>> 5ca57ce (common: Add custom nom parsers)
 {
     move |i: I| {
         all_consuming(optional_trailing_nl(|x| f.parse(x)))
@@ -84,12 +130,20 @@ where
 
 pub fn optional_trailing_nl<F, I, R, E>(mut f: F) -> impl FnMut(I) -> IResult<I, R, E>
 where
+<<<<<<< HEAD
     I: Compare<I> + InputIter + InputTake + Clone + Slice<RangeFrom<usize>>,
     F: Parser<I, R, E>,
     E: ParseError<I>,
     <I as InputIter>::Item: AsChar,
 {
     move |i: I| terminated(|x| f.parse(x), opt(newline)).parse(i)
+=======
+    I: NewLine + Compare<I> + InputIter + InputTake + Clone,
+    F: Parser<I, R, E>,
+    E: ParseError<I>,
+{
+    move |i: I| terminated(|x| f.parse(x), opt(nl)).parse(i)
+>>>>>>> 5ca57ce (common: Add custom nom parsers)
 }
 
 pub fn nom_lines<F, I, R, E>(mut f: F) -> impl FnMut(I) -> IResult<I, Vec<R>, E>
