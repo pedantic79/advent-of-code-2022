@@ -1,5 +1,9 @@
-use crate::common::GetMutTwice;
+use crate::common::{
+    nom::{nom_lines, nom_usize, process_input},
+    GetMutTwice,
+};
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{bytes::complete::tag, combinator::map, sequence::tuple};
 use std::{convert::Infallible, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -35,24 +39,22 @@ pub struct Move {
     to_stack: usize,
 }
 
-impl FromStr for Move {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut field = s.split(' ');
-        field.next().unwrap();
-        let count = field.next().unwrap().parse().unwrap();
-        field.next().unwrap();
-        let from_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
-        field.next().unwrap();
-        let to_stack = field.next().unwrap().parse::<usize>().unwrap() - 1;
-
-        Ok(Self {
+fn parse_moves(s: &str) -> Vec<Move> {
+    process_input(nom_lines(map(
+        tuple((
+            tag("move "),
+            nom_usize,
+            tag(" from "),
+            nom_usize,
+            tag(" to "),
+            nom_usize,
+        )),
+        |(_, count, _, from_stack, _, to_stack)| Move {
             count,
-            from_stack,
-            to_stack,
-        })
-    }
+            from_stack: from_stack - 1,
+            to_stack: to_stack - 1,
+        },
+    )))(s)
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -95,7 +97,7 @@ impl Input {
 pub fn generator(input: &str) -> Input {
     let (crates, moves) = input.split_once("\n\n").unwrap();
     let crates = crates.trim_end().parse().unwrap();
-    let moves = moves.lines().map(|line| line.parse().unwrap()).collect();
+    let moves = parse_moves(moves);
 
     Input { crates, moves }
 }
