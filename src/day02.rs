@@ -2,25 +2,23 @@ use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
     bytes::complete::{tag, take},
     combinator::map,
-    multi::separated_list1,
     sequence::tuple,
 };
 
+use crate::common::nom::{nom_lines, process_input};
+
 #[aoc_generator(day2)]
 pub fn generator(input: &[u8]) -> Vec<(usize, usize)> {
-    separated_list1(
-        tag::<_, _, ()>("\n"),
-        map(
-            tuple((
-                map(take(1usize), |x: &[u8]| usize::from(x[0] - b'A') + 1),
-                tag(" "),
-                map(take(1usize), |x: &[u8]| usize::from(x[0] - b'X') + 1),
-            )),
-            |(l, _, r)| (l, r),
-        ),
-    )(input)
-    .unwrap()
-    .1
+    process_input(nom_lines(map(
+        tuple((
+            map(take::<_, _, ()>(1usize), |x: &[u8]| {
+                usize::from(x[0] - b'A') + 1
+            }),
+            tag(" "),
+            map(take(1usize), |x: &[u8]| usize::from(x[0] - b'X') + 1),
+        )),
+        |(l, _, r)| (l, r),
+    )))(input)
 }
 
 #[aoc(day2, part1)]
