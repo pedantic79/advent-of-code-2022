@@ -1,26 +1,14 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{
-    bytes::complete::tag,
-    combinator::opt,
-    multi::{fold_many1, separated_list1},
-    sequence::terminated,
-    IResult,
-};
+use nom::{bytes::complete::tag, multi::separated_list1};
 
-use crate::common::nom::nom_u32;
-
-fn parse_num(s: &str) -> IResult<&str, u32> {
-    terminated(nom_u32, opt(tag("\n")))(s)
-}
+use crate::common::nom::{nom_u32, process_input, separated_fold0};
 
 #[aoc_generator(day01)]
 pub fn generator(input: &str) -> Vec<u32> {
-    separated_list1(
-        tag("\n"),
-        fold_many1(parse_num, || 0, |acc: u32, n| acc + n),
-    )(input)
-    .unwrap()
-    .1
+    process_input(separated_list1(
+        tag("\n\n"),
+        separated_fold0(tag("\n"), nom_u32, || 0, |acc: u32, n| acc + n),
+    ))(input)
 }
 
 #[aoc(day01, part1, heap)]
