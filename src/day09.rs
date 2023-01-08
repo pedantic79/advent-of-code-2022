@@ -1,26 +1,18 @@
-use std::{convert::Infallible, str::FromStr};
-
+use ahash::HashSetExt;
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{
+    bytes::complete::{self, tag},
+    combinator::map,
+    sequence::tuple,
+};
+use rustc_hash::FxHashSet as HashSet;
 
-use crate::common::utils::parse_lines;
+use crate::common::nom::{nom_lines, nom_usize, process_input};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Move {
     dir: u8,
     mag: usize,
-}
-
-impl FromStr for Move {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mag = s[2..].parse().unwrap();
-
-        Ok(Self {
-            dir: s.as_bytes()[0],
-            mag,
-        })
-    }
 }
 
 impl Move {
@@ -39,14 +31,14 @@ impl Move {
 #[derive(Debug)]
 pub struct Snake<const N: usize> {
     rope: [(isize, isize); N],
-    pos: rustc_hash::FxHashSet<(isize, isize)>,
+    pos: HashSet<(isize, isize)>,
 }
 
 impl<const N: usize> Default for Snake<N> {
     fn default() -> Self {
         Self {
             rope: [Default::default(); N],
-            pos: Default::default(),
+            pos: HashSet::with_capacity(8192),
         }
     }
 }
@@ -54,15 +46,19 @@ impl<const N: usize> Default for Snake<N> {
 impl<const N: usize> Snake<N> {
     pub fn process_move(&mut self, m: &Move) {
         let (r, c, mag) = m.get();
-        for _ in 0..mag {
+        self.pos.insert(self.rope[N - 1]);
+
+        'outer: for _ in 0..mag {
             self.rope[0] = (self.rope[0].0 + r, self.rope[0].1 + c);
 
             for x in 1..N {
                 if !self.update_tail(x, self.rope[x - 1]) {
                     // not updated
-                    break;
+                    continue 'outer;
+                    // break;
                 }
             }
+
             self.pos.insert(self.rope[N - 1]);
         }
     }
@@ -82,7 +78,13 @@ impl<const N: usize> Snake<N> {
 
 #[aoc_generator(day9)]
 pub fn generator(input: &str) -> Vec<Move> {
-    parse_lines(input)
+    process_input(nom_lines(map(
+        tuple((complete::take(1_usize), tag(" "), nom_usize::<&str>)),
+        |(dir, _, mag)| Move {
+            dir: dir.as_bytes()[0],
+            mag,
+        },
+    )))(input)
 }
 
 fn solve<const N: usize>(inputs: &[Move]) -> usize {
