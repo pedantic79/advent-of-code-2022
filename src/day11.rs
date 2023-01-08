@@ -1,6 +1,16 @@
-use crate::common::heap_retain;
+use crate::common::{
+    heap_retain,
+    nom::{nom_lines, nom_u64, nom_u8, nom_usize, process_input},
+};
 use aoc_runner_derive::{aoc, aoc_generator};
-use std::{convert::Infallible, fmt::Debug, str::FromStr};
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::{map, opt},
+    multi::separated_list0,
+    sequence::{preceded, tuple},
+    IResult,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Monkey {
@@ -11,71 +21,11 @@ pub struct Monkey {
     test_false: usize,
 }
 
-fn parse_trailing_number<T>(s: &str) -> T
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    s.rsplit_once(' ').unwrap().1.parse().unwrap()
-}
-
-fn parse_v<T, C>(s: &str) -> C
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-    C: FromIterator<T>,
-{
-    let (_, x) = s.rsplit_once(':').unwrap();
-    x.split(',')
-        .map(|x| x.trim_start().parse().unwrap())
-        .collect()
-}
-
-impl FromStr for Monkey {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut lines = s.lines();
-        lines.next();
-        let items = parse_v(lines.next().unwrap());
-        let op = lines.next().unwrap().parse().unwrap();
-        let test_divisor = parse_trailing_number(lines.next().unwrap());
-        let test_true = parse_trailing_number(lines.next().unwrap());
-        let test_false = parse_trailing_number(lines.next().unwrap());
-
-        Ok(Monkey {
-            items,
-            op,
-            test_divisor,
-            test_true,
-            test_false,
-        })
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Op {
     Add(u64),
     Mul(u64),
     Square,
-}
-
-impl FromStr for Op {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (_, operation) = s.rsplit_once(" = ").unwrap();
-        Ok(if operation.as_bytes()[6] == b'o' {
-            Op::Square
-        } else {
-            let n = parse_trailing_number(operation);
-            if operation.as_bytes()[4] == b'*' {
-                Op::Mul(n)
-            } else {
-                Op::Add(n)
-            }
-        })
-    }
 }
 
 impl Op {
@@ -88,12 +38,48 @@ impl Op {
     }
 }
 
+fn parse_items(s: &str) -> IResult<&str, Vec<u64>> {
+    separated_list0(tag(", "), nom_u64)(s)
+}
+
+fn parse_op(s: &str) -> IResult<&str, Op> {
+    alt((
+        map(tag("old * old"), |_| Op::Square),
+        map(preceded(tag("old + "), nom_u64), Op::Add),
+        map(preceded(tag("old * "), nom_u64), Op::Mul),
+    ))(s)
+}
+
+fn parse_monkey(s: &str) -> IResult<&str, Monkey> {
+    map(
+        tuple((
+            tag("Monkey "),
+            nom_u8,
+            tag(":\n  Starting items: "),
+            parse_items,
+            tag("\n  Operation: new = "),
+            parse_op,
+            tag("\n  Test: divisible by "),
+            nom_u64,
+            tag("\n    If true: throw to monkey "),
+            nom_usize,
+            tag("\n    If false: throw to monkey "),
+            nom_usize,
+            opt(tag("\n")),
+        )),
+        |(_, _, _, items, _, op, _, test_divisor, _, test_true, _, test_false, _)| Monkey {
+            items,
+            op,
+            test_divisor,
+            test_true,
+            test_false,
+        },
+    )(s)
+}
+
 #[aoc_generator(day11)]
 pub fn generator(input: &str) -> Vec<Monkey> {
-    input
-        .split("\n\n")
-        .map(|chunk| chunk.parse().unwrap())
-        .collect()
+    process_input(nom_lines(parse_monkey))(input)
 }
 
 fn solve<const ITERATIONS: usize>(
