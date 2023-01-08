@@ -1,7 +1,7 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use std::{convert::Infallible, str::FromStr};
+use nom::{branch::alt, bytes::complete::tag, combinator::map, sequence::preceded, IResult};
 
-use crate::common::utils::parse_lines;
+use crate::common::nom::{nom_i64, nom_lines, process_input};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instructions {
@@ -9,22 +9,16 @@ pub enum Instructions {
     Addx(i64),
 }
 
-impl FromStr for Instructions {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "noop" {
-            Ok(Instructions::Noop)
-        } else {
-            let num = s.split_once(' ').unwrap().1.parse().unwrap();
-            Ok(Instructions::Addx(num))
-        }
-    }
+fn parse_instructions(s: &str) -> IResult<&str, Instructions> {
+    alt((
+        map(tag("noop"), |_| Instructions::Noop),
+        map(preceded(tag("addx "), nom_i64), Instructions::Addx),
+    ))(s)
 }
 
 #[aoc_generator(day10)]
 pub fn generator(input: &str) -> Vec<Instructions> {
-    parse_lines(input)
+    process_input(nom_lines(parse_instructions))(input)
 }
 
 fn solve(inputs: &[Instructions], mut update: impl FnMut(i64, i64)) {
@@ -93,14 +87,14 @@ mod tests {
 
     #[test]
     pub fn input_test() {
-        // println!("{:?}", generator(SAMPLE));
+        println!("{:?}", generator(SAMPLE.trim_end_matches('\n')));
 
         // assert_eq!(generator(SAMPLE), Object());
     }
 
     #[test]
     pub fn part1_test() {
-        assert_eq!(part1(&generator(SAMPLE)), 13140);
+        assert_eq!(part1(&generator(SAMPLE.trim_end_matches('\n'))), 13140);
     }
 
     #[test]
@@ -113,7 +107,7 @@ mod tests {
 ######......######......######......####
 #######.......#######.......#######....."#;
 
-        assert_eq!(part2(&generator(SAMPLE)), ANS);
+        assert_eq!(part2(&generator(SAMPLE.trim_end_matches('\n'))), ANS);
     }
 
     mod regression {
