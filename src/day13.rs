@@ -2,8 +2,12 @@ use std::{convert::Infallible, str::FromStr};
 
 use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
-    branch::alt, bytes::complete::tag, combinator::map, multi::separated_list0,
-    sequence::delimited, IResult,
+    branch::alt,
+    bytes::complete::tag,
+    combinator::{all_consuming, map},
+    multi::separated_list0,
+    sequence::delimited,
+    IResult,
 };
 
 use crate::common::nom::nom_u8;
@@ -50,7 +54,7 @@ impl FromStr for Signal {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(signal(s).unwrap().1)
+        Ok(all_consuming(signal)(s).unwrap().1)
     }
 }
 
