@@ -1,36 +1,19 @@
-use std::{convert::Infallible, str::FromStr};
-
 use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    combinator::{all_consuming, map},
+    combinator::map,
     multi::separated_list0,
-    sequence::delimited,
+    sequence::{delimited, separated_pair},
     IResult,
 };
 
-use crate::common::nom::nom_u8;
+use crate::common::nom::{nom_u8, process_input};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Signal {
     List(Vec<Signal>),
     Value(u8),
-}
-
-fn num(s: &str) -> IResult<&str, Signal> {
-    map(nom_u8, Signal::Value)(s)
-}
-
-fn list(s: &str) -> IResult<&str, Signal> {
-    map(
-        delimited(tag("["), separated_list0(tag(","), signal), tag("]")),
-        Signal::List,
-    )(s)
-}
-
-fn signal(s: &str) -> IResult<&str, Signal> {
-    alt((num, list))(s)
 }
 
 impl PartialOrd for Signal {
@@ -50,34 +33,36 @@ impl Ord for Signal {
     }
 }
 
-impl FromStr for Signal {
-    type Err = Infallible;
+fn signal(s: &str) -> IResult<&str, Signal> {
+    alt((
+        map(nom_u8, Signal::Value),
+        map(
+            delimited(tag("["), separated_list0(tag(","), signal), tag("]")),
+            Signal::List,
+        ),
+    ))(s)
+}
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(all_consuming(signal)(s).unwrap().1)
-    }
+fn signals(s: &str) -> IResult<&str, [Signal; 2]> {
+    map(separated_pair(signal, tag("\n"), signal), |(a, b)| [a, b])(s)
 }
 
 #[aoc_generator(day13)]
-pub fn generator(inputs: &str) -> Vec<Signal> {
-    inputs
-        .lines()
-        .filter(|l| !l.is_empty())
-        .map(|l| l.parse().unwrap())
-        .collect()
+pub fn generator(inputs: &str) -> Vec<[Signal; 2]> {
+    process_input(separated_list0(tag("\n\n"), signals))(inputs)
 }
 
 #[aoc(day13, part1)]
-pub fn part1(input: &[Signal]) -> usize {
+pub fn part1(input: &[[Signal; 2]]) -> usize {
     input
-        .chunks(2)
+        .iter()
         .enumerate()
-        .filter_map(|(i, x)| if x[0] <= x[1] { Some(i + 1) } else { None })
+        .filter_map(|(i, [x, y])| if x <= y { Some(i + 1) } else { None })
         .sum()
 }
 
 #[aoc(day13, part2)]
-pub fn part2(input: &[Signal]) -> usize {
+pub fn part2(input: &[[Signal; 2]]) -> usize {
     // let a = signal("[[2]]").unwrap().1;
     // let b = signal("[[6]]").unwrap().1;
     let a = Signal::List(vec![Signal::List(vec![Signal::Value(2)])]);
@@ -85,6 +70,7 @@ pub fn part2(input: &[Signal]) -> usize {
 
     let (x, y) = input
         .iter()
+        .flatten()
         .fold((1, 2), |(mut count_a, mut count_b), sig| {
             if sig < &b {
                 count_b += 1;
