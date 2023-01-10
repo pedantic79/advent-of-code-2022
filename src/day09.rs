@@ -16,7 +16,7 @@ pub struct Move {
 }
 
 impl Move {
-    fn get(&self) -> (isize, isize, usize) {
+    fn get(&self) -> (i16, i16, usize) {
         let x = self.mag;
         match self.dir {
             b'U' => (1, 0, x),
@@ -30,15 +30,15 @@ impl Move {
 
 #[derive(Debug)]
 pub struct Snake<const N: usize> {
-    rope: [(isize, isize); N],
-    pos: HashSet<(isize, isize)>,
+    rope: [(i16, i16); N],
+    pos: HashSet<(i16, i16)>,
 }
 
 impl<const N: usize> Default for Snake<N> {
     fn default() -> Self {
         Self {
             rope: [Default::default(); N],
-            pos: HashSet::with_capacity(8192),
+            pos: HashSet::with_capacity(1 << 13),
         }
     }
 }
@@ -46,7 +46,6 @@ impl<const N: usize> Default for Snake<N> {
 impl<const N: usize> Snake<N> {
     pub fn process_move(&mut self, m: &Move) {
         let (r, c, mag) = m.get();
-        self.pos.insert(self.rope[N - 1]);
 
         'outer: for _ in 0..mag {
             self.rope[0] = (self.rope[0].0 + r, self.rope[0].1 + c);
@@ -55,7 +54,6 @@ impl<const N: usize> Snake<N> {
                 if !self.update_tail(x, self.rope[x - 1]) {
                     // not updated
                     continue 'outer;
-                    // break;
                 }
             }
 
@@ -63,7 +61,7 @@ impl<const N: usize> Snake<N> {
         }
     }
 
-    pub fn update_tail(&mut self, pos: usize, last: (isize, isize)) -> bool {
+    pub fn update_tail(&mut self, pos: usize, last: (i16, i16)) -> bool {
         let d = (last.0 - self.rope[pos].0, last.1 - self.rope[pos].1);
 
         if d.0.abs() > 1 || d.1.abs() > 1 {
@@ -89,6 +87,7 @@ pub fn generator(input: &str) -> Vec<Move> {
 
 fn solve<const N: usize>(inputs: &[Move]) -> usize {
     let mut snake = Snake::<N>::default();
+    snake.pos.insert(snake.rope[N - 1]);
 
     for m in inputs {
         snake.process_move(m);
