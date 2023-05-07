@@ -1,31 +1,63 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use std::iter::Peekable;
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_while1},
+    character::complete::alpha1,
+    combinator::{map, opt},
+    multi::fold_many0,
+    sequence::{preceded, terminated, tuple},
+    IResult,
+};
 
-fn process<'a, I: Iterator<Item = &'a str>>(
-    lines: &mut Peekable<I>,
-    sizes: &mut Vec<usize>,
-) -> usize {
+use crate::common::nom::nom_usize;
+
+fn filename(s: &str) -> IResult<&str, &str> {
+    take_while1(|c: char| c == '.' || c.is_alphabetic())(s)
+}
+
+fn dirname(s: &str) -> IResult<&str, &str> {
+    take_while1(|c: char| c == '/' || c == '.' || c.is_alphabetic())(s)
+}
+
+fn ls(s: &str) -> IResult<&str, usize> {
+    preceded(
+        tag("$ ls\n"),
+        fold_many0(
+            terminated(
+                alt((
+                    map(tuple((tag("dir "), alpha1)), |_| 0),
+                    map(tuple((nom_usize, tag(" "), filename)), |(n, _, _)| n),
+                )),
+                opt(tag("\n")),
+            ),
+            || 0,
+            |acc, n| acc + n,
+        ),
+    )(s)
+}
+
+fn cd(s: &str) -> IResult<&str, &str> {
+    map(tuple((tag("$ cd "), dirname, tag("\n"))), |(_, name, _)| {
+        name
+    })(s)
+}
+
+fn process(s: &mut &str, sizes: &mut Vec<usize>) -> usize {
     let mut total = 0;
 
-    while let Some(line) = lines.next() {
-        if line.starts_with("$ cd") {
-            match line.rsplit_once(' ').unwrap().1 {
+    while !s.is_empty() {
+        if let Ok((rem_s, name)) = cd(s) {
+            *s = rem_s;
+            match name {
                 ".." => break,
                 "/" => continue,
-                _ => total += process(lines, sizes),
+                _ => total += process(s, sizes),
             }
-        } else if line == "$ ls" {
-            while let Some(false) = lines.peek().map(|l| l.starts_with('$')) {
-                let ls_output = lines.next().unwrap();
-                if !ls_output.starts_with("dir") {
-                    total += ls_output
-                        .split_once(' ')
-                        .unwrap()
-                        .0
-                        .parse::<usize>()
-                        .unwrap();
-                }
-            }
+        } else if let Ok((rem_s, size)) = ls(s) {
+            *s = rem_s;
+            total += size;
+        } else {
+            panic!("unknown input: {s}")
         }
     }
 
@@ -34,9 +66,9 @@ fn process<'a, I: Iterator<Item = &'a str>>(
 }
 
 #[aoc_generator(day7)]
-pub fn generator(inputs: &str) -> Vec<usize> {
+pub fn generator(mut inputs: &str) -> Vec<usize> {
     let mut res = Vec::new();
-    process(&mut inputs.lines().peekable(), &mut res);
+    process(&mut inputs, &mut res);
     res
 }
 
@@ -81,9 +113,30 @@ $ ls
 
     #[test]
     pub fn input_test() {
-        // println!("{:?}", generator(SAMPLE));
+        println!("{:?}", generator(SAMPLE));
 
         // assert_eq!(generator(SAMPLE), Object());
+    }
+
+    #[test]
+    pub fn ls_test() {
+        const A: &str = "$ ls
+dir fcqv
+dir fcv
+72939 hdpgfcwd
+236918 jlncjqh.csz
+dir jvwfwrg
+dir tzwpllhq
+dir vglf
+28586 wzljr.zvp";
+        assert_eq!(ls(A).unwrap().1, 72939 + 236918 + 28586);
+    }
+
+    #[test]
+    pub fn cd_test() {
+        const A: &str = "$ cd /
+";
+        assert_eq!(cd(A).unwrap().1, "/");
     }
 
     #[test]
