@@ -229,7 +229,7 @@ pub fn part1(inputs: &[Object]) -> usize {
             .flat_map(|state| state.next(inputs).into_iter())
             .collect();
         state.sort_unstable_by_key(|state| Reverse(state.total));
-        state.truncate(425);
+        state.truncate(525);
     }
 
     state
