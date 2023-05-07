@@ -6,11 +6,11 @@ use pathfinding::prelude::astar;
 use crate::common::utils::neighbors_and_self;
 
 const NONE: u8 = 0;
-const UP: u8 = 0b0001;
-const DOWN: u8 = 0b0010;
-const LEFT: u8 = 0b0100;
-const RIGHT: u8 = 0b1000;
-const WALL: u8 = 0b10000;
+const UP: u8 = 1 << 0;
+const DOWN: u8 = 1 << 1;
+const LEFT: u8 = 1 << 2;
+const RIGHT: u8 = 1 << 3;
+const WALL: u8 = 1 << 4;
 
 fn square2value(sq: u8) -> Option<u8> {
     Some(match sq {
@@ -137,7 +137,7 @@ pub fn generator(input: &str) -> World {
 
     for line in input.lines() {
         if !line.is_empty() {
-            res.push(line.bytes().filter_map(square2value).collect())
+            res.push(line.bytes().filter_map(square2value).collect());
         }
     }
     let height = res.len();
