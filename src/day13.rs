@@ -33,6 +33,7 @@ impl Ord for Signal {
     }
 }
 
+#[inline]
 fn signal(s: &str) -> IResult<&str, Signal> {
     alt((
         map(nom_u8, Signal::Value),

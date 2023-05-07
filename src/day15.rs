@@ -6,7 +6,7 @@ use itertools::Itertools;
 use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::common::nom::nom_i64;
+use crate::common::nom::{nom_i64, nom_lines, process_input};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SensorReport {
@@ -37,10 +37,7 @@ fn parse_sensor_report(line: &str) -> IResult<&str, SensorReport> {
 
 #[aoc_generator(day15)]
 pub fn generator(input: &str) -> Vec<SensorReport> {
-    input
-        .lines()
-        .map(|line| parse_sensor_report(line).unwrap().1)
-        .collect()
+    process_input(nom_lines(parse_sensor_report))(input)
 }
 
 fn manhattan_distance(a: (i64, i64), b: (i64, i64)) -> i64 {

@@ -1,7 +1,14 @@
 use ahash::{HashMap, HashMapExt};
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
-use nom::{branch::alt, bytes::complete::tag, multi::separated_list1, sequence::tuple, IResult};
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take},
+    combinator::all_consuming,
+    multi::separated_list1,
+    sequence::tuple,
+    IResult,
+};
 use std::cmp::Reverse;
 
 use crate::common::nom::nom_u32;
@@ -13,17 +20,17 @@ pub struct Object {
 }
 
 fn parse_line(s: &str) -> IResult<&str, (&str, u32, Vec<&str>)> {
-    let (s, (_, name, _, rate, _, connections)) = tuple((
+    let (s, (_, name, _, rate, _, connections)) = all_consuming(tuple((
         tag("Valve "),
-        nom::bytes::complete::take(2usize),
+        take(2usize),
         tag(" has flow rate="),
         nom_u32,
         alt((
             tag("; tunnels lead to valves "),
             tag("; tunnel leads to valve "),
         )),
-        separated_list1(tag(", "), nom::bytes::complete::take(2usize)),
-    ))(s)?;
+        separated_list1(tag(", "), take(2usize)),
+    )))(s)?;
 
     Ok((s, (name, rate, connections)))
 }

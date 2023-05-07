@@ -1,4 +1,7 @@
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::combinator::map;
+
+use crate::common::nom::{nom_i64, nom_lines, process_input};
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Node {
@@ -14,14 +17,17 @@ impl std::fmt::Debug for Node {
 
 #[aoc_generator(day20)]
 pub fn generator(input: &str) -> Vec<Node> {
-    input
-        .lines()
-        .enumerate()
-        .map(|(pos, val)| Node {
-            pos,
-            val: val.parse().unwrap(),
-        })
-        .collect()
+    let mut pos = 0;
+
+    let x = process_input(nom_lines(map(nom_i64::<_, ()>, |val| {
+        let r = Node { pos, val };
+        pos += 1;
+        r
+    })))(input);
+
+    // We need to bind and return to avoid `pos` incorrectly "borrowed value does not live long enough"
+    #[allow(clippy::let_and_return)]
+    x
 }
 
 fn solve<const ITERATIONS: usize>(inputs: &[Node]) -> i64 {

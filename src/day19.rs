@@ -5,7 +5,7 @@ use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
-use crate::common::nom::nom_u16;
+use crate::common::nom::{nom_lines, nom_u16, process_input};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BluePrint {
@@ -200,10 +200,7 @@ fn simulate(bp: &BluePrint, total_minutes: u16, factor: u16) -> u16 {
 
 #[aoc_generator(day19)]
 pub fn generator(input: &str) -> Vec<BluePrint> {
-    input
-        .lines()
-        .map(|line| parse_blueprint(line).unwrap().1)
-        .collect()
+    process_input(nom_lines(parse_blueprint))(input)
 }
 
 #[aoc(day19, part1)]

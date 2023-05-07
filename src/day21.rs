@@ -3,13 +3,13 @@ use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
-    character::complete::one_of,
+    character::complete::{newline, one_of},
     combinator::map,
     sequence::tuple,
     IResult,
 };
 
-use crate::common::nom::nom_i64;
+use crate::common::nom::{fold_separated_list0, nom_i64, process_input};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Operation {
@@ -38,7 +38,7 @@ enum Either<L, R> {
 }
 
 fn parse_name(s: &str) -> IResult<&str, String> {
-    map(take(4_usize), |x: &str| x.to_string())(s)
+    map(take(4usize), |x: &str| x.to_string())(s)
 }
 
 fn parse_op(s: &str) -> IResult<&str, Operation> {
@@ -55,15 +55,6 @@ fn parse_op(s: &str) -> IResult<&str, Operation> {
             },
         ),
     ))(s)
-}
-
-fn parse_line(s: &str) -> (String, Operation) {
-    map(
-        tuple((parse_name, tag(": "), parse_op)),
-        |(name, _, operation)| (name, operation),
-    )(s)
-    .unwrap()
-    .1
 }
 
 fn solve(name: &str, data: &HashMap<String, Operation>) -> i64 {
@@ -134,7 +125,18 @@ fn solve_p2(name: &str, data: &HashMap<String, Operation>, target: i64) -> i64 {
 
 #[aoc_generator(day21)]
 pub fn generator(input: &str) -> HashMap<String, Operation> {
-    input.lines().map(parse_line).collect()
+    process_input(fold_separated_list0(
+        newline,
+        map(
+            tuple((parse_name, tag(": "), parse_op)),
+            |(name, _, operation)| (name, operation),
+        ),
+        HashMap::default,
+        |mut hm, (a, b)| {
+            hm.insert(a, b);
+            hm
+        },
+    ))(input)
 }
 
 #[aoc(day21, part1)]

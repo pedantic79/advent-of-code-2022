@@ -1,13 +1,13 @@
 use aoc_runner_derive::{aoc, aoc_generator};
 use nom::{bytes::complete::tag, multi::separated_list1};
 
-use crate::common::nom::{nom_u32, process_input, separated_fold0};
+use crate::common::nom::{fold_separated_list0, nom_u32, process_input};
 
 #[aoc_generator(day01)]
 pub fn generator(input: &str) -> Vec<u32> {
     process_input(separated_list1(
         tag("\n\n"),
-        separated_fold0(tag("\n"), nom_u32, || 0, |acc: u32, n| acc + n),
+        fold_separated_list0(tag("\n"), nom_u32, || 0, |acc: u32, n| acc + n),
     ))(input)
 }
 

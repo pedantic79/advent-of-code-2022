@@ -1,4 +1,7 @@
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{character::complete::alpha1, combinator::map};
+
+use crate::common::nom::{nom_lines, process_input};
 
 // Amount to subtract to
 const OFFSET: u8 = 64;
@@ -17,7 +20,7 @@ fn calc_priority(set: u64) -> u64 {
 
 #[aoc_generator(day3)]
 pub fn generator(input: &str) -> Vec<String> {
-    input.lines().map(|s| s.to_string()).collect()
+    process_input(nom_lines(map(alpha1::<_, ()>, |s: &str| s.to_string())))(input)
 }
 
 #[aoc(day3, part1)]
