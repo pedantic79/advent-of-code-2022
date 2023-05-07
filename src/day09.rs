@@ -1,11 +1,10 @@
-use ahash::HashSetExt;
 use aoc_runner_derive::{aoc, aoc_generator};
+use bitvec::prelude::BitArray;
 use nom::{
     bytes::complete::{self, tag},
     combinator::map,
     sequence::tuple,
 };
-use rustc_hash::FxHashSet as HashSet;
 
 use crate::common::nom::{nom_lines, nom_usize, process_input};
 
@@ -31,34 +30,41 @@ impl Move {
 #[derive(Debug)]
 pub struct Snake<const N: usize> {
     rope: [(i16, i16); N],
-    pos: HashSet<(i16, i16)>,
 }
 
 impl<const N: usize> Default for Snake<N> {
     fn default() -> Self {
         Self {
             rope: [Default::default(); N],
-            pos: HashSet::with_capacity(1 << 13),
         }
     }
 }
 
 impl<const N: usize> Snake<N> {
-    pub fn process_move(&mut self, m: &Move) {
-        let (r, c, mag) = m.get();
+    pub fn process_moves(&mut self, mv: &[Move]) -> usize {
+        let mut pos: BitArray<[usize; 1 << 11]> = BitArray::ZERO;
+        let mut count = 1;
+        pos.set(0, true);
 
-        'outer: for _ in 0..mag {
-            self.rope[0] = (self.rope[0].0 + r, self.rope[0].1 + c);
+        for m in mv {
+            let (r, c, mag) = m.get();
 
-            for x in 1..N {
-                if !self.update_tail(x, self.rope[x - 1]) {
-                    // not updated
-                    continue 'outer;
+            'outer: for _ in 0..mag {
+                self.rope[0] = (self.rope[0].0 + r, self.rope[0].1 + c);
+
+                for x in 1..N {
+                    if !self.update_tail(x, self.rope[x - 1]) {
+                        continue 'outer;
+                    }
                 }
-            }
 
-            self.pos.insert(self.rope[N - 1]);
+                let mut r = unsafe { pos.get_unchecked_mut(cantor(self.rope[N - 1])) };
+                count += !*r as usize;
+                *r = true;
+            }
         }
+
+        count
     }
 
     pub fn update_tail(&mut self, pos: usize, last: (i16, i16)) -> bool {
@@ -74,6 +80,11 @@ impl<const N: usize> Snake<N> {
     }
 }
 
+#[inline]
+fn cantor(p: (i16, i16)) -> usize {
+    crate::common::utils::cantor2d_b(p.0, p.1)
+}
+
 #[aoc_generator(day9)]
 pub fn generator(input: &str) -> Vec<Move> {
     process_input(nom_lines(map(
@@ -87,13 +98,7 @@ pub fn generator(input: &str) -> Vec<Move> {
 
 fn solve<const N: usize>(inputs: &[Move]) -> usize {
     let mut snake = Snake::<N>::default();
-    snake.pos.insert(snake.rope[N - 1]);
-
-    for m in inputs {
-        snake.process_move(m);
-    }
-
-    snake.pos.len()
+    snake.process_moves(inputs)
 }
 
 #[aoc(day9, part1)]
