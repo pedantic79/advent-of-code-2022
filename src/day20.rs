@@ -38,17 +38,12 @@ fn solve<const ITERATIONS: usize>(inputs: &[Node]) -> i64 {
             let pos = data.iter().position(|&x| x == node).unwrap();
             let idx = ((pos as i64) + node.val).rem_euclid((data.len() - 1) as i64) as usize;
 
-            if idx != pos {
-                data.remove(pos);
-
-                if idx == 0 {
-                    data.push(node);
-                } else {
-                    data.insert(idx, node);
-                };
-
-                // println!("moving {} to {idx}:{data:?}", node.val);
+            match pos.cmp(&idx) {
+                std::cmp::Ordering::Equal => {}
+                std::cmp::Ordering::Less => data[pos..=idx].rotate_left(1),
+                std::cmp::Ordering::Greater => data[idx..=pos].rotate_right(1),
             }
+            // println!("moving {} to {idx}:{data:?}", node.val);
         }
     }
 
