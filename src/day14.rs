@@ -1,9 +1,13 @@
 use std::ops::RangeInclusive;
 
 use aoc_runner_derive::{aoc, aoc_generator};
+use nom::{
+    bytes::complete::tag, character::streaming::char, multi::separated_list1,
+    sequence::separated_pair,
+};
 use rustc_hash::FxHashMap as HashMap;
 
-use crate::common::utils::parse_pair;
+use crate::common::nom::{nom_lines, nom_usize, process_input};
 
 fn mk_range_inc(a: usize, b: usize) -> RangeInclusive<usize> {
     if a < b {
@@ -16,26 +20,25 @@ fn mk_range_inc(a: usize, b: usize) -> RangeInclusive<usize> {
 #[aoc_generator(day14)]
 pub fn generator(input: &str) -> HashMap<(usize, usize), u8> {
     let mut map = HashMap::default();
-    input
-        .lines()
-        .map(|line| {
-            line.split(" -> ")
-                .map(|e| parse_pair::<usize>(e).unwrap())
-                .collect::<Vec<_>>()
-        })
-        .for_each(|line| {
-            line.windows(2).for_each(|x| {
-                if x[0].0 == x[1].0 {
-                    for y in mk_range_inc(x[0].1, x[1].1) {
-                        map.insert((x[0].0, y), b'#');
-                    }
-                } else {
-                    for y in mk_range_inc(x[0].0, x[1].0) {
-                        map.insert((y, x[0].1), b'#');
-                    }
+
+    process_input(nom_lines(separated_list1(
+        tag(" -> "),
+        separated_pair(nom_usize, char(','), nom_usize),
+    )))(input)
+    .into_iter()
+    .for_each(|line| {
+        line.windows(2).for_each(|x| {
+            if x[0].0 == x[1].0 {
+                for y in mk_range_inc(x[0].1, x[1].1) {
+                    map.insert((x[0].0, y), b'#');
                 }
-            })
-        });
+            } else {
+                for y in mk_range_inc(x[0].0, x[1].0) {
+                    map.insert((y, x[0].1), b'#');
+                }
+            }
+        })
+    });
 
     map
 }
