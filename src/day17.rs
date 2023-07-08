@@ -13,19 +13,30 @@ impl Debug for Chamber {
 }
 
 impl Chamber {
-    fn piece2u8(piece: u32, row: usize, x: usize) -> u8 {
-        ((piece >> (u8::BITS as usize * row) & 0xff) >> (x + 1)) as u8
+    const ALLOC_STEP: usize = 4096;
+
+    fn get_mut_view(&mut self, start: usize, end: usize) -> &mut [u8] {
+        // if end is more than the chamber size, then increase the chamber
+        while self.0.len() < end {
+            self.0.extend_from_slice(&[0; Self::ALLOC_STEP]);
+        }
+
+        &mut self.0[start..end]
     }
 
     fn check_piece(&self, piece: u32, y: usize, x: usize) -> bool {
-        (0..4).all(|row| Self::piece2u8(piece, row, x) & self.0[y + row] == 0)
+        (0..4).all(|row| piece2u8(piece, row, x) & self.0.get(y + row).unwrap_or(&0) == 0)
     }
 
     fn write_piece(&mut self, piece: u32, dy: usize, dx: usize) {
-        for (row, grid_row) in self.0[dy..(dy + 4)].iter_mut().enumerate() {
-            *grid_row |= Self::piece2u8(piece, row, dx);
+        for (row, grid_row) in self.get_mut_view(dy, dy + 4).iter_mut().enumerate() {
+            *grid_row |= piece2u8(piece, row, dx);
         }
     }
+}
+
+fn piece2u8(piece: u32, row: usize, x: usize) -> u8 {
+    ((piece >> (u8::BITS as usize * row) & 0xff) >> (x + 1)) as u8
 }
 
 fn display(b: u8, n: u8) -> char {
@@ -106,7 +117,7 @@ pub fn part2(inputs: &[u8]) -> usize {
 }
 
 pub fn solve<const MAX_ITERATIONS: usize>(inputs: &[u8]) -> usize {
-    let mut chamber = Chamber(vec![0; 1024 * 5]);
+    let mut chamber = Chamber(vec![0; Chamber::ALLOC_STEP]);
     let mut drafts = inputs.iter().enumerate().cycle();
     let mut max = 0;
     let mut seen = HashMap::with_capacity(500);
