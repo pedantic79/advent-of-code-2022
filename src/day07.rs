@@ -5,8 +5,8 @@ use nom::{
     character::complete::alpha1,
     combinator::{map, opt},
     multi::fold_many0,
-    sequence::{preceded, terminated, tuple},
-    IResult,
+    sequence::{preceded, terminated},
+    IResult, Parser,
 };
 
 use crate::common::nom::nom_usize;
@@ -25,21 +25,20 @@ fn ls(s: &str) -> IResult<&str, usize> {
         fold_many0(
             terminated(
                 alt((
-                    map(tuple((tag("dir "), alpha1)), |_| 0),
-                    map(tuple((nom_usize, tag(" "), filename)), |(n, _, _)| n),
+                    map((tag("dir "), alpha1), |_| 0),
+                    map((nom_usize, tag(" "), filename), |(n, _, _)| n),
                 )),
                 opt(tag("\n")),
             ),
             || 0,
             |acc, n| acc + n,
         ),
-    )(s)
+    )
+    .parse(s)
 }
 
 fn cd(s: &str) -> IResult<&str, &str> {
-    map(tuple((tag("$ cd "), dirname, tag("\n"))), |(_, name, _)| {
-        name
-    })(s)
+    map((tag("$ cd "), dirname, tag("\n")), |(_, name, _)| name).parse(s)
 }
 
 fn process(s: &mut &str, sizes: &mut Vec<usize>) -> usize {

@@ -53,7 +53,7 @@ pub fn part2(rucksacks: &[String]) -> u64 {
         .map(|group| {
             group
                 .iter()
-                .map(|rucksack| rucksack.bytes().fold(0, |set, c| set | 1 << (c - OFFSET)))
+                .map(|rucksack| rucksack.bytes().fold(0, |set, c| set | (1 << (c - OFFSET))))
                 .reduce(|acc, set| acc & set)
                 .unwrap()
         })

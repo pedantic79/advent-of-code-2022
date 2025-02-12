@@ -3,7 +3,7 @@ use std::iter::repeat;
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
-use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
+use nom::{bytes::complete::tag, combinator::map, IResult, Parser};
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::nom::{nom_i64, nom_lines, process_input};
@@ -17,7 +17,7 @@ pub struct SensorReport {
 
 fn parse_sensor_report(line: &str) -> IResult<&str, SensorReport> {
     map(
-        tuple((
+        (
             tag("Sensor at x="),
             nom_i64,
             tag(", y="),
@@ -26,13 +26,14 @@ fn parse_sensor_report(line: &str) -> IResult<&str, SensorReport> {
             nom_i64,
             tag(", y="),
             nom_i64,
-        )),
+        ),
         |(_, a, _, b, _, c, _, d)| SensorReport {
             sensor: (b, a),
             beacon: (d, c),
             distance: manhattan_distance((b, a), (d, c)),
         },
-    )(line)
+    )
+    .parse(line)
 }
 
 #[aoc_generator(day15)]

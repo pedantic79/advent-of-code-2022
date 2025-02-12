@@ -1,5 +1,7 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{branch::alt, bytes::complete::tag, combinator::map, sequence::preceded, IResult};
+use nom::{
+    branch::alt, bytes::complete::tag, combinator::map, sequence::preceded, IResult, Parser,
+};
 
 use crate::common::nom::{nom_i64, nom_lines, process_input};
 
@@ -13,7 +15,8 @@ fn parse_instructions(s: &str) -> IResult<&str, Instructions> {
     alt((
         map(tag("noop"), |_| Instructions::Noop),
         map(preceded(tag("addx "), nom_i64), Instructions::Addx),
-    ))(s)
+    ))
+    .parse(s)
 }
 
 #[aoc_generator(day10)]
@@ -72,7 +75,7 @@ pub fn part2(inputs: &[Instructions]) -> String {
             Vec::with_capacity(41 * 6),
             |mut acc, line| {
                 acc.push(b'\n');
-                acc.extend(line.into_iter());
+                acc.extend(line);
                 acc
             },
         ))

@@ -6,8 +6,7 @@ use nom::{
     bytes::complete::{tag, take},
     combinator::all_consuming,
     multi::separated_list1,
-    sequence::tuple,
-    IResult,
+    IResult, Parser,
 };
 use std::cmp::Reverse;
 
@@ -20,7 +19,7 @@ pub struct Object {
 }
 
 fn parse_line(s: &str) -> IResult<&str, (&str, u32, Vec<&str>)> {
-    let (s, (_, name, _, rate, _, connections)) = all_consuming(tuple((
+    let (s, (_, name, _, rate, _, connections)) = all_consuming((
         tag("Valve "),
         take(2usize),
         tag(" has flow rate="),
@@ -30,7 +29,8 @@ fn parse_line(s: &str) -> IResult<&str, (&str, u32, Vec<&str>)> {
             tag("; tunnel leads to valve "),
         )),
         separated_list1(tag(", "), take(2usize)),
-    )))(s)?;
+    ))
+    .parse(s)?;
 
     Ok((s, (name, rate, connections)))
 }

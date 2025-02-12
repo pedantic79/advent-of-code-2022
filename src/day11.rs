@@ -8,8 +8,8 @@ use nom::{
     bytes::complete::tag,
     combinator::{map, opt},
     multi::separated_list0,
-    sequence::{preceded, tuple},
-    IResult,
+    sequence::preceded,
+    IResult, Parser,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -39,7 +39,7 @@ impl Op {
 }
 
 fn parse_items(s: &str) -> IResult<&str, Vec<u64>> {
-    separated_list0(tag(", "), nom_u64)(s)
+    separated_list0(tag(", "), nom_u64).parse(s)
 }
 
 fn parse_op(s: &str) -> IResult<&str, Op> {
@@ -47,12 +47,13 @@ fn parse_op(s: &str) -> IResult<&str, Op> {
         map(tag("old * old"), |_| Op::Square),
         map(preceded(tag("old + "), nom_u64), Op::Add),
         map(preceded(tag("old * "), nom_u64), Op::Mul),
-    ))(s)
+    ))
+    .parse(s)
 }
 
 fn parse_monkey(s: &str) -> IResult<&str, Monkey> {
     map(
-        tuple((
+        (
             tag("Monkey "),
             nom_u8,
             tag(":\n  Starting items: "),
@@ -66,7 +67,7 @@ fn parse_monkey(s: &str) -> IResult<&str, Monkey> {
             tag("\n    If false: throw to monkey "),
             nom_usize,
             opt(tag("\n")),
-        )),
+        ),
         |(_, _, _, items, _, op, _, test_divisor, _, test_true, _, test_false, _)| Monkey {
             items,
             op,
@@ -74,7 +75,8 @@ fn parse_monkey(s: &str) -> IResult<&str, Monkey> {
             test_true,
             test_false,
         },
-    )(s)
+    )
+    .parse(s)
 }
 
 #[aoc_generator(day11)]

@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
+use nom::{bytes::complete::tag, combinator::map, IResult, Parser};
 use rayon::prelude::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::nom::{nom_lines, nom_u16, process_input};
@@ -22,7 +22,7 @@ fn num(s: &str) -> IResult<&str, u16> {
 
 fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {
     map(
-        tuple((
+        (
             tag("Blueprint "),
             num,
             tag(": Each ore robot costs "),
@@ -38,7 +38,7 @@ fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {
             tag(" ore and "),
             num,
             tag(" obsidian."),
-        )),
+        ),
         |x| BluePrint {
             num: x.1,
             ore: x.3,
@@ -46,7 +46,8 @@ fn parse_blueprint(s: &str) -> IResult<&str, BluePrint> {
             obsidian: (x.7, x.9),
             geode: (x.11, x.13),
         },
-    )(s)
+    )
+    .parse(s)
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Hash)]

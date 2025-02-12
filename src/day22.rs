@@ -7,7 +7,7 @@ use nom::{
     bytes::complete::tag,
     combinator::{complete, map},
     multi::many0,
-    IResult,
+    IResult, Parser,
 };
 
 use crate::common::nom::nom_u32;
@@ -85,7 +85,8 @@ fn parse_moves(line: &str) -> IResult<&str, Vec<Moves>> {
         map(tag("L"), |_| Moves::Left),
         map(tag("R"), |_| Moves::Right),
         map(nom_u32, Moves::Forward),
-    ))))(line)
+    ))))
+    .parse(line)
 }
 
 #[aoc_generator(day22)]

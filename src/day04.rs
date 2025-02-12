@@ -1,5 +1,5 @@
 use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{bytes::complete::tag, combinator::map, sequence::tuple};
+use nom::{bytes::complete::tag, combinator::map};
 
 use crate::common::nom::{nom_lines, nom_u32, process_input};
 
@@ -14,7 +14,7 @@ pub struct Assignments {
 #[aoc_generator(day4)]
 pub fn generator(input: &str) -> Vec<Assignments> {
     process_input(nom_lines(map(
-        tuple((
+        (
             nom_u32,
             tag("-"),
             nom_u32,
@@ -22,7 +22,7 @@ pub fn generator(input: &str) -> Vec<Assignments> {
             nom_u32,
             tag("-"),
             nom_u32,
-        )),
+        ),
         |(a, _, b, _, x, _, y)| {
             let (one, two) = ((a, b), (x, y));
             Assignments { one, two }

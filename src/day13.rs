@@ -5,7 +5,7 @@ use nom::{
     combinator::map,
     multi::separated_list0,
     sequence::{delimited, separated_pair},
-    IResult,
+    IResult, Parser,
 };
 
 use crate::common::nom::{nom_u8, process_input};
@@ -41,11 +41,12 @@ fn signal(s: &str) -> IResult<&str, Signal> {
             delimited(tag("["), separated_list0(tag(","), signal), tag("]")),
             Signal::List,
         ),
-    ))(s)
+    ))
+    .parse(s)
 }
 
 fn signals(s: &str) -> IResult<&str, [Signal; 2]> {
-    map(separated_pair(signal, tag("\n"), signal), |(a, b)| [a, b])(s)
+    map(separated_pair(signal, tag("\n"), signal), |(a, b)| [a, b]).parse(s)
 }
 
 #[aoc_generator(day13)]

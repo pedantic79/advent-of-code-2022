@@ -3,7 +3,6 @@ use bitvec::prelude::BitArray;
 use nom::{
     bytes::complete::{self, tag},
     combinator::map,
-    sequence::tuple,
 };
 
 use crate::common::nom::{nom_lines, nom_usize, process_input};
@@ -82,13 +81,13 @@ impl<const N: usize> Snake<N> {
 
 #[inline]
 fn cantor(p: (i16, i16)) -> usize {
-    crate::common::utils::cantor2d_b(p.0, p.1)
+    crate::common::pairing::pair2d_b(p.0, p.1)
 }
 
 #[aoc_generator(day9)]
 pub fn generator(input: &str) -> Vec<Move> {
     process_input(nom_lines(map(
-        tuple((complete::take(1_usize), tag(" "), nom_usize::<&str>)),
+        (complete::take(1_usize), tag(" "), nom_usize::<&str>),
         |(dir, _, mag)| Move {
             dir: dir.as_bytes()[0],
             mag,

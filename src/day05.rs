@@ -3,7 +3,7 @@ use crate::common::{
     GetMutTwice,
 };
 use aoc_runner_derive::{aoc, aoc_generator};
-use nom::{bytes::complete::tag, combinator::map, sequence::tuple};
+use nom::{bytes::complete::tag, combinator::map};
 use std::{convert::Infallible, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -41,14 +41,14 @@ pub struct Move {
 
 fn parse_moves(s: &str) -> Vec<Move> {
     process_input(nom_lines(map(
-        tuple((
+        (
             tag("move "),
             nom_usize,
             tag(" from "),
             nom_usize,
             tag(" to "),
             nom_usize,
-        )),
+        ),
         |(_, count, _, from_stack, _, to_stack)| Move {
             count,
             from_stack: from_stack - 1,

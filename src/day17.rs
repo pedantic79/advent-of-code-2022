@@ -36,11 +36,11 @@ impl Chamber {
 }
 
 fn piece2u8(piece: u32, row: usize, x: usize) -> u8 {
-    ((piece >> (u8::BITS as usize * row) & 0xff) >> (x + 1)) as u8
+    (((piece >> (u8::BITS as usize * row)) & 0xff) >> (x + 1)) as u8
 }
 
 fn display(b: u8, n: u8) -> char {
-    if b & 1 << n > 0 {
+    if b & (1 << n) > 0 {
         '#'
     } else {
         '.'
@@ -49,7 +49,7 @@ fn display(b: u8, n: u8) -> char {
 
 struct ChamberView<'a>(&'a [u8]);
 
-impl<'a> Debug for ChamberView<'a> {
+impl Debug for ChamberView<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f)?;
         for &row in self.0.iter().rev() {

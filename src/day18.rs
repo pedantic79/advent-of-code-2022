@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::iproduct;
-use nom::{bytes::complete::tag, combinator::map, sequence::tuple, IResult};
+use nom::{bytes::complete::tag, combinator::map, IResult, Parser};
 
 use crate::common::nom::nom_i64;
 // use rustc_hash::FxHashSet as HashSet;
@@ -24,11 +24,12 @@ pub fn generator(input: &str) -> HashSet<Cube> {
     input
         .lines()
         .map(|line| {
-            map(tuple((num, tag(","), num, tag(","), num)), |v| Cube {
+            map((num, tag(","), num, tag(","), num), |v| Cube {
                 x: v.0,
                 y: v.2,
                 z: v.4,
-            })(line)
+            })
+            .parse(line)
             .unwrap()
             .1
         })

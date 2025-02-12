@@ -5,8 +5,7 @@ use nom::{
     bytes::complete::{tag, take},
     character::complete::{newline, one_of},
     combinator::map,
-    sequence::tuple,
-    IResult,
+    IResult, Parser,
 };
 
 use crate::common::nom::{fold_separated_list0, nom_i64, process_input};
@@ -38,14 +37,14 @@ enum Either<L, R> {
 }
 
 fn parse_name(s: &str) -> IResult<&str, String> {
-    map(take(4usize), |x: &str| x.to_string())(s)
+    map(take(4usize), |x: &str| x.to_string()).parse(s)
 }
 
 fn parse_op(s: &str) -> IResult<&str, Operation> {
     alt((
         map(nom_i64, Operation::Value),
         map(
-            tuple((parse_name, tag(" "), one_of("+*/-"), tag(" "), parse_name)),
+            (parse_name, tag(" "), one_of("+*/-"), tag(" "), parse_name),
             |(l, _, op, _, r)| match op {
                 '*' => Operation::Mul(l, r),
                 '+' => Operation::Add(l, r),
@@ -54,7 +53,8 @@ fn parse_op(s: &str) -> IResult<&str, Operation> {
                 _ => panic!("Unknown operation"),
             },
         ),
-    ))(s)
+    ))
+    .parse(s)
 }
 
 fn solve(name: &str, data: &HashMap<String, Operation>) -> i64 {
@@ -127,10 +127,9 @@ fn solve_p2(name: &str, data: &HashMap<String, Operation>, target: i64) -> i64 {
 pub fn generator(input: &str) -> HashMap<String, Operation> {
     process_input(fold_separated_list0(
         newline,
-        map(
-            tuple((parse_name, tag(": "), parse_op)),
-            |(name, _, operation)| (name, operation),
-        ),
+        map((parse_name, tag(": "), parse_op), |(name, _, operation)| {
+            (name, operation)
+        }),
         HashMap::default,
         |mut hm, (a, b)| {
             hm.insert(a, b);
