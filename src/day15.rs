@@ -1,9 +1,9 @@
-use std::iter::repeat;
+use std::iter;
 
 use ahash::HashSet;
 use aoc_runner_derive::{aoc, aoc_generator};
 use itertools::Itertools;
-use nom::{bytes::complete::tag, combinator::map, IResult, Parser};
+use nom::{IResult, Parser, bytes::complete::tag, combinator::map};
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::common::nom::{nom_i64, nom_lines, process_input};
@@ -96,7 +96,7 @@ fn scan(inputs: &[SensorReport], points_of_interest: &HashSet<(i64, i64)>) -> Op
 
         [(1, 1), (1, -1), (-1, -1), (-1, 1)]
             .iter()
-            .flat_map(|x| repeat(x).take(o.distance as usize))
+            .flat_map(|x| iter::repeat_n(x, o.distance as usize))
             .find_map(|dir| {
                 point = (point.0 + dir.0, point.1 + dir.1);
                 if out_range(inputs, points_of_interest, point, max) {
