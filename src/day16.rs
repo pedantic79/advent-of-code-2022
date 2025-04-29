@@ -1,25 +1,27 @@
-use ahash::{HashMap, HashMapExt};
+use std::collections::VecDeque;
+
+use ahash::HashMap;
 use aoc_runner_derive::{aoc, aoc_generator};
+use indexmap::IndexSet;
 use itertools::Itertools;
 use nom::{
+    IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take},
-    combinator::all_consuming,
     multi::separated_list1,
-    IResult, Parser,
 };
-use std::cmp::Reverse;
 
-use crate::common::nom::nom_u32;
+use crate::common::nom::{nom_lines, nom_u32, process_input};
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Object {
-    rate: usize,
-    connections: Vec<usize>,
+pub struct Valve<'a> {
+    name: &'a str,
+    flow_rate: u32,
+    tunnels: Vec<&'a str>,
 }
 
 fn parse_line(s: &str) -> IResult<&str, (&str, u32, Vec<&str>)> {
-    let (s, (_, name, _, rate, _, connections)) = all_consuming((
+    let (s, (_, name, _, rate, _, tunnels)) = (
         tag("Valve "),
         take(2usize),
         tag(" has flow rate="),
@@ -29,246 +31,245 @@ fn parse_line(s: &str) -> IResult<&str, (&str, u32, Vec<&str>)> {
             tag("; tunnel leads to valve "),
         )),
         separated_list1(tag(", "), take(2usize)),
-    ))
-    .parse(s)?;
+    )
+        .parse(s)?;
 
-    Ok((s, (name, rate, connections)))
+    Ok((s, (name, rate, tunnels)))
+}
+
+fn parse_input_value(s: &str) -> IResult<&str, Valve<'_>> {
+    let (s, (name, flow_rate, tunnels)) = parse_line(s)?;
+
+    Ok((
+        s,
+        Valve {
+            name,
+            flow_rate,
+            tunnels,
+        },
+    ))
+}
+
+#[derive(Debug)]
+pub struct Graph {
+    flow_rates: Vec<u32>,
+    target_valve_mapping: Vec<(usize, usize)>,
+    distances: Vec<Vec<u32>>,
+}
+
+impl Graph {
+    fn from_valves(valves: &[Valve<'_>]) -> Self {
+        let flow_rates = valves.iter().map(|v| v.flow_rate).collect_vec();
+
+        let mut target_valve_mapping = Vec::new();
+        for (id, &rate) in flow_rates.iter().enumerate() {
+            if rate > 0 {
+                let target_index = target_valve_mapping.len();
+                target_valve_mapping.push((id, target_index));
+            }
+        }
+
+        let distances = calculate_distance(valves, &target_valve_mapping);
+
+        Graph {
+            flow_rates,
+            target_valve_mapping,
+            distances,
+        }
+    }
+}
+
+fn bfs(start: usize, distances: &mut [u32], adj_map: &HashMap<usize, Vec<usize>>) {
+    let mut queue = VecDeque::new();
+    queue.push_back((start, 0)); // (node_id, distance)
+    distances[start] = 0;
+
+    while let Some((current_id, dist)) = queue.pop_front() {
+        if let Some(neighbors) = adj_map.get(&current_id) {
+            for &neighbor_id in neighbors {
+                if distances[neighbor_id] == u32::MAX {
+                    distances[neighbor_id] = dist + 1;
+                    queue.push_back((neighbor_id, distances[neighbor_id]));
+                }
+            }
+        }
+    }
+}
+
+fn calculate_distance(
+    valves: &[Valve<'_>],
+    target_valve_mapping: &[(usize, usize)],
+) -> Vec<Vec<u32>> {
+    const START: usize = 0;
+
+    let num_nodes = valves.len();
+
+    let lookup = valves
+        .iter()
+        .map(|v| v.name)
+        .collect::<IndexSet<_, ahash::RandomState>>();
+
+    let adj_map = valves
+        .iter()
+        .map(|valve| {
+            let id = lookup.get_index_of(valve.name).unwrap();
+            let neighbors = valve
+                .tunnels
+                .iter()
+                .map(|&name| lookup.get_index_of(name).unwrap())
+                .collect();
+
+            (id, neighbors)
+        })
+        .collect();
+
+    // Nodes relevant for distance calculation: Start node + Target nodes
+    let mut relevant_nodes = Vec::with_capacity(target_valve_mapping.len() + 1);
+    if target_valve_mapping[0].0 != START {
+        relevant_nodes.push(START);
+    }
+    relevant_nodes.extend(target_valve_mapping.iter().map(|x| x.0));
+
+    // Calculate all-pairs shortest paths between relevant nodes using pathfinding::prelude::bfs
+    let mut distances = vec![vec![u32::MAX; num_nodes]; num_nodes];
+    for &node_id in &relevant_nodes {
+        bfs(node_id, &mut distances[node_id], &adj_map);
+    }
+
+    distances
 }
 
 #[aoc_generator(day16)]
-pub fn generator(input: &str) -> Vec<Object> {
-    let valves = input
-        .lines()
-        .map(|line| parse_line(line).unwrap().1)
-        .map(|(k, v1, v2)| (k, (v1 as usize, v2)))
-        .collect::<HashMap<_, _>>();
-    let mut rev_lookup = Vec::with_capacity(valves.len());
-    let mut lookup = HashMap::with_capacity(valves.len());
-    lookup.insert("AA", 0);
-    rev_lookup.push("AA");
-    let mut idx = 1;
+pub fn generator(input: &str) -> Graph {
+    // Ensure that "AA" is always the first valve
+    fn move_start_to_front(mut valves: Vec<Valve<'_>>) -> Vec<Valve<'_>> {
+        let idx = valves.iter().position(|v| v.name == "AA").unwrap();
+        valves.swap(idx, 0);
+        valves
+    }
 
-    for k in valves.keys() {
-        if *k != "AA" {
-            lookup.insert(k, idx);
-            rev_lookup.push(k);
-            idx += 1;
+    let valves = move_start_to_front(process_input(nom_lines(parse_input_value))(input));
+
+    Graph::from_valves(&valves)
+}
+
+fn dfs_part1(
+    id: usize,
+    time_left: u32,
+    mask: u64,
+    graph: &Graph,
+    memo: &mut HashMap<(usize, u32, u64), u32>,
+) -> u32 {
+    let memo_key = (id, time_left, mask);
+    if let Some(&cached_pressure) = memo.get(&memo_key) {
+        return cached_pressure;
+    }
+
+    let mut max_pressure = 0;
+
+    // Iterate through all potential target valves to open next
+    for &(next_target_id, target_idx) in &graph.target_valve_mapping {
+        // Check if this target valve is already open
+        if (mask >> target_idx) & 1 == 1 {
+            continue;
+        }
+
+        let time_to_move = graph.distances[id][next_target_id];
+        if time_to_move == u32::MAX {
+            // Skip if unreachable (safety check)
+            continue;
+        }
+
+        let time_needed = time_to_move + 1;
+
+        if time_left >= time_needed {
+            let new_time_left = time_left - time_needed;
+            let pressure_gain = graph.flow_rates[next_target_id] * new_time_left;
+
+            let remaining_pressure = dfs_part1(
+                next_target_id,
+                new_time_left,
+                mask | (1 << target_idx),
+                graph,
+                memo,
+            );
+
+            max_pressure = max_pressure.max(pressure_gain + remaining_pressure);
         }
     }
 
-    let mut res = Vec::with_capacity(valves.len());
-    for k in rev_lookup {
-        let connections = valves[k].1.iter().map(|x| lookup[x] as usize).collect();
-        res.push(Object {
-            rate: valves[k].0,
-            connections,
-        })
-    }
-
-    res
+    memo.insert(memo_key, max_pressure);
+    max_pressure
 }
 
-#[inline]
-fn encode(n: usize) -> usize {
-    1usize << n
-}
+fn dfs_part2(
+    id: usize,
+    time_left: u32,
+    mask: u64,
+    current_total_pressure: u32,
+    graph: &Graph,
+    max_pressure_for_mask: &mut HashMap<u64, u32>,
+) {
+    // Update the maximum pressure recorded for this specific set of open valves (mask)
+    max_pressure_for_mask
+        .entry(mask)
+        .and_modify(|p| *p = (*p).max(current_total_pressure))
+        .or_insert(current_total_pressure);
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct State {
-    open: usize,
-    current_room: usize,
-    flow_per: usize,
-    total: usize,
-}
-
-impl State {
-    fn next(&self, object: &[Object]) -> Vec<Self> {
-        let mut res = vec![];
-        let total = self.total + self.flow_per;
-
-        // Open Valve:
-        if object[self.current_room].rate > 0 && !self.open & encode(self.current_room) > 0 {
-            let mut open = self.open;
-            open |= encode(self.current_room);
-            res.push(Self {
-                open,
-                total,
-                flow_per: self.flow_per + object[self.current_room].rate,
-                current_room: self.current_room,
-            });
+    // Iterate through all potential target valves to open next
+    for &(next_target_id, target_idx) in &graph.target_valve_mapping {
+        // Check if this target valve is already open in the current path
+        if (mask >> target_idx) & 1 == 1 {
+            continue;
         }
 
-        // Move
-        for next_valve in &object[self.current_room].connections {
-            res.push(Self {
-                current_room: *next_valve,
-                total,
-                open: self.open,
-                flow_per: self.flow_per,
-            });
-        }
-        res
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-struct ElephantState {
-    open: usize,
-    current_room: usize,
-    elephant_room: usize,
-    flow_per: usize,
-    total: usize,
-}
-
-impl ElephantState {
-    fn next(&self, object: &[Object]) -> Vec<Self> {
-        let mut vec_you = vec![];
-        let total = self.total + self.flow_per;
-
-        if object[self.current_room].rate > 0 && !self.open & (encode(self.current_room)) > 0 {
-            let mut open = self.open;
-            open |= encode(self.current_room);
-            vec_you.push((
-                Self {
-                    open,
-                    current_room: self.current_room,
-                    elephant_room: self.elephant_room,
-                    flow_per: self.flow_per + object[self.current_room].rate,
-                    total,
-                },
-                true,
-            ));
+        let time_to_move = graph.distances[id][next_target_id];
+        if time_to_move == u32::MAX {
+            // Skip if unreachable (safety check)
+            continue;
         }
 
-        for next_valve in &object[self.current_room].connections {
-            vec_you.push((
-                Self {
-                    open: self.open,
-                    current_room: *next_valve,
-                    elephant_room: self.elephant_room,
-                    flow_per: self.flow_per,
-                    total,
-                },
-                false,
-            ));
+        let time_needed = time_to_move + 1;
+
+        if time_left >= time_needed {
+            let new_time_left = time_left - time_needed;
+            let pressure_gain = graph.flow_rates[next_target_id] * new_time_left;
+
+            dfs_part2(
+                next_target_id,
+                new_time_left,
+                mask | (1 << target_idx),
+                current_total_pressure + pressure_gain,
+                graph,
+                max_pressure_for_mask,
+            );
         }
-
-        let mut vec_elephant = vec![];
-        if object[self.elephant_room].rate > 0 && !self.open & (encode(self.elephant_room)) > 0 {
-            let mut open = self.open;
-            open |= encode(self.elephant_room);
-            vec_elephant.push((
-                Self {
-                    open,
-                    current_room: self.current_room,
-                    elephant_room: self.elephant_room,
-                    flow_per: self.flow_per + object[self.elephant_room].rate,
-                    total,
-                },
-                true,
-            ));
-        }
-
-        for next_valve in &object[self.elephant_room].connections {
-            vec_elephant.push((
-                Self {
-                    open: self.open,
-                    current_room: self.current_room,
-                    elephant_room: *next_valve,
-                    flow_per: self.flow_per,
-                    total,
-                },
-                false,
-            ));
-        }
-
-        let mut res = vec![];
-        for ((you, you_opened), (elephant, elephant_opened)) in vec_you
-            .into_iter()
-            .cartesian_product(vec_elephant.into_iter())
-        {
-            let current_room = you.current_room;
-            let elephant_room = elephant.elephant_room;
-            if you_opened && elephant_opened {
-                if you.current_room != elephant.elephant_room {
-                    let mut open = you.open;
-                    open |= encode(self.elephant_room);
-
-                    res.push(ElephantState {
-                        open,
-                        current_room,
-                        elephant_room,
-                        flow_per: you.flow_per + object[elephant.elephant_room].rate,
-                        total,
-                    });
-                }
-            } else {
-                let open = if you.open.count_ones() > elephant.open.count_ones() {
-                    you.open
-                } else {
-                    elephant.open
-                };
-
-                res.push(ElephantState {
-                    open,
-                    current_room,
-                    elephant_room,
-                    flow_per: you.flow_per.max(elephant.flow_per),
-                    total,
-                });
-            }
-        }
-        res
     }
 }
 
 #[aoc(day16, part1)]
-pub fn part1(inputs: &[Object]) -> usize {
-    let mut state = vec![State {
-        open: Default::default(),
-        current_room: 0,
-        flow_per: 0,
-        total: 0,
-    }];
-    for _ in 0..30 {
-        state = state
-            .into_iter()
-            .flat_map(|state| state.next(inputs).into_iter())
-            .collect();
-        state.sort_unstable_by_key(|state| Reverse(state.total));
-        state.truncate(525);
-    }
-
-    state
-        .into_iter()
-        .max_by_key(|state| state.total)
-        .unwrap()
-        .total
+pub fn part1(graph: &Graph) -> u32 {
+    dfs_part1(0, 30, 0, graph, &mut Default::default())
 }
 
 #[aoc(day16, part2)]
-pub fn part2(inputs: &[Object]) -> usize {
-    let mut state = vec![ElephantState {
-        open: Default::default(),
-        current_room: 0,
-        elephant_room: 0,
-        flow_per: 0,
-        total: 0,
-    }];
-    for _ in 0..26 {
-        state = state
-            .into_iter()
-            .flat_map(|state| state.next(inputs).into_iter())
-            .collect();
-        state.sort_unstable_by_key(|state| Reverse(state.total));
-        state.truncate(3075);
-    }
+pub fn part2(graph: &Graph) -> u32 {
+    let mut max_pressure_for_mask = HashMap::default();
+    dfs_part2(0, 26, 0, 0, graph, &mut max_pressure_for_mask);
 
-    state
-        .into_iter()
-        .max_by_key(|state| state.total)
+    // calculate the maximum pressure, where the masks are not the same
+    max_pressure_for_mask
+        .iter()
+        .tuple_combinations()
+        .filter_map(|((mask1, pressure1), (mask2, pressure2))| {
+            if (mask1 & mask2) == 0 {
+                Some(pressure1 + pressure2)
+            } else {
+                None
+            }
+        })
+        .max()
         .unwrap()
-        .total
 }
 
 #[cfg(test)]
@@ -307,7 +308,7 @@ Valve JJ has flow rate=21; tunnel leads to valve II";
         use super::*;
 
         const INPUT: &str = include_str!("../input/2022/day16.txt");
-        const ANSWERS: (usize, usize) = (1376, 1933);
+        const ANSWERS: (u32, u32) = (1376, 1933);
 
         #[test]
         pub fn test() {
