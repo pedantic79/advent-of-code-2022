@@ -97,7 +97,7 @@ fn solve<const ITERATIONS: usize>(
             for j in 0..monkeys[i].items.len() {
                 let item = monkeys[i].items[j];
                 let worry = worry_maintainer(monkeys[i].op.run(item));
-                let idx = if worry % monkeys[i].test_divisor == 0 {
+                let idx = if worry.is_multiple_of(monkeys[i].test_divisor) {
                     monkeys[i].test_true
                 } else {
                     monkeys[i].test_false
